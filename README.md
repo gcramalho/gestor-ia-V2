@@ -9,6 +9,7 @@ Plataforma completa para criar, configurar e gerenciar agentes de IA integrados 
 - [Tecnologias](#tecnologias)
 - [Instalação](#instalação)
 - [Configuração](#configuração)
+- [Testes de Autenticação](#testes-de-autenticação)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [APIs](#apis)
 - [Autenticação](#autenticação)
@@ -93,11 +94,17 @@ npm install
 
 3. **Configure as variáveis de ambiente**
 ```bash
-cp .env.example .env
+cp env.example .env
 # Edite o arquivo .env com as configurações certas
 ```
 
-4. **Inicie o servidor**
+4. **Gere as chaves JWT**
+```bash
+node generate-secrets.js
+# Copie as chaves geradas para o .env
+```
+
+5. **Inicie o servidor**
 ```bash
 npm start
 # ou
@@ -143,6 +150,69 @@ WHATSAPP_API_KEY=<sua-chave-whatsapp>
 
 3. Configure as políticas de segurança (RLS)
 
+## ===================== Testes de Autenticação =====================
+
+Para testar e diagnosticar problemas com a autenticação, especialmente o erro "Erro no Supabase: fetch failed", use os arquivos de teste incluídos:
+
+### 🧪 Arquivos de Teste Disponíveis
+
+1. **`test-auth.html`** - Interface web completa para testar registro e login
+2. **`test-supabase.html`** - Interface específica para diagnóstico do Supabase
+3. **`test-supabase.js`** - Script Node.js para testar configuração do Supabase
+4. **`TESTE_AUTENTICACAO.md`** - Guia detalhado de testes
+
+### 🚀 Como Testar
+
+#### 1. Teste via Interface Web (Recomendado)
+```bash
+# Abra no navegador
+open test-auth.html
+# ou
+open test-supabase.html
+```
+
+#### 2. Teste via Script Node.js
+```bash
+# Execute o script de teste
+node test-supabase.js
+```
+
+### 🔧 Diagnóstico de Problemas
+
+#### Erro "Erro no Supabase: fetch failed"
+
+**Causas Possíveis:**
+1. Variáveis de ambiente não configuradas
+2. URL do Supabase incorreta
+3. Chaves do Supabase incorretas
+4. Projeto Supabase inativo
+5. Problema de conectividade de rede
+
+**Soluções:**
+1. Execute `node test-supabase.js` para verificar configuração
+2. Verifique se o projeto Supabase está ativo
+3. Confirme se as chaves estão corretas
+4. Teste a conectividade de rede
+
+### 📋 Passos para Teste Completo
+
+1. **Verificar Backend**
+   - Certifique-se de que está rodando: `npm start`
+   - Teste conectividade via `test-auth.html`
+
+2. **Testar Registro**
+   - Use dados de teste no formulário
+   - Verifique se retorna sucesso
+
+3. **Testar Login**
+   - Use credenciais válidas
+   - Verifique se gera tokens
+
+4. **Testar Endpoints Protegidos**
+   - Use o token para acessar `/api/auth/me`
+
+Para mais detalhes, consulte o arquivo `TESTE_AUTENTICACAO.md`.
+
 ## ===================== ESTRUTURA DO PROJETO =====================
 
 ```
@@ -184,6 +254,12 @@ projetoGestorIA/
 ├── logs/                        # Arquivos de log
 ├── app.js                       # Configuração Express
 ├── server.js                    # Ponto de entrada
+├── test-auth.html              # Interface de teste de autenticação
+├── test-supabase.html          # Interface de diagnóstico do Supabase
+├── test-supabase.js            # Script de teste do Supabase
+├── generate-secrets.js         # Gerador de chaves JWT
+├── env.example                 # Exemplo de variáveis de ambiente
+├── TESTE_AUTENTICACAO.md       # Guia de testes
 └── package.json
 ```
 

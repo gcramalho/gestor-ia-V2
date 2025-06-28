@@ -23,6 +23,7 @@ const generateTokens = (userId, userRole, empresaId) => {
 exports.register = async (req, res) => {
     const { nomeEmpresa, emailEmpresa, telefoneEmpresa, nomeUsuario, emailUsuario, senha } = req.body;
     const supabase = req.app.get('supabase');
+    let supabase_user_id = null; // Declarar fora do try
 
     try {
         // Criar o usuário no Supabase Auth
@@ -38,7 +39,7 @@ exports.register = async (req, res) => {
             return response.badRequest(res, 'Não foi possível criar o usuário no Supabase.');
         }
 
-        const supabase_user_id = authData.user.id;
+        supabase_user_id = authData.user.id; // Atribuir valor
 
         // Criar a empresa no MongoDB
         const novaEmpresa = new Empresa({
@@ -67,7 +68,11 @@ exports.register = async (req, res) => {
     } catch (error) {
         // Se algo der errado
         if (supabase_user_id) {
-            await supabase.auth.admin.deleteUser(supabase_user_id);
+            try {
+                await supabase.auth.admin.deleteUser(supabase_user_id);
+            } catch (deleteError) {
+                console.error('Erro ao deletar usuário do Supabase:', deleteError);
+            }
         }
         response.serverError(res, error);
     }

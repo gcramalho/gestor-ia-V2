@@ -1,4 +1,5 @@
 // PENDENTE - CONFERIR ROTAS DAS PASTAS
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -7,20 +8,23 @@ const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 const { errorHandler, notFound } = require('./src/utils/errorHandler');
 const { default: mongoose } = require('mongoose');
+const logger = require('./src/utils/logger');
 
 // Inicialização do Express
 const app = express();
 
-// Confituração Supabase
+// Configuração Supabase
 const supabase = createClient(
     process.env.SUPABASE_URL || 'https://inserir-url-aqui.supabase.co',
-    process.env.SUPABASE_KEY || 'chave-supabase'
+    process.env.SUPABASE_ANON_KEY || 'chave-supabase'
 );
 app.set('supabase', supabase);
 
 // Middlewares padrão
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000', // URL front
+    origin: process.env.NODE_ENV === 'development' 
+        ? ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:8000']
+        : process.env.CLIENT_URL || 'http://localhost:3000',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true

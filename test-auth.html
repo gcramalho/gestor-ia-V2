@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Autenticação - Gestor IA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .toggle-form {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .toggle-form button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            white-space: pre-line;
+        }
+
+        .response.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .response.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .response.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .config-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .config-section h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Teste de Autenticação</h1>
+            <p>Teste as funções de registro e login do backend</p>
+        </div>
+
+        <!-- Configuração da API -->
+        <div class="config-section">
+            <h3>⚙️ Configuração da API</h3>
+            <div class="form-group">
+                <label for="apiUrl">URL da API:</label>
+                <input type="text" id="apiUrl" value="http://localhost:5000/api" placeholder="http://localhost:5000/api">
+            </div>
+            <button class="btn btn-secondary" onclick="testConnection()">Testar Conexão</button>
+        </div>
+
+        <!-- Formulário de Registro -->
+        <div id="registerForm" class="form-section active">
+            <h2>📝 Registrar Novo Usuário</h2>
+            
+            <div class="form-group">
+                <label for="regNomeEmpresa">Nome da Empresa:</label>
+                <input type="text" id="regNomeEmpresa" placeholder="Minha Empresa LTDA" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regEmailEmpresa">Email da Empresa:</label>
+                <input type="email" id="regEmailEmpresa" placeholder="contato@minhaempresa.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regTelefoneEmpresa">Telefone da Empresa:</label>
+                <input type="text" id="regTelefoneEmpresa" placeholder="(11) 99999-9999" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regNomeUsuario">Nome do Usuário:</label>
+                <input type="text" id="regNomeUsuario" placeholder="João Silva" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regEmailUsuario">Email do Usuário:</label>
+                <input type="email" id="regEmailUsuario" placeholder="joao@minhaempresa.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regSenha">Senha:</label>
+                <input type="password" id="regSenha" placeholder="Sua senha" required>
+            </div>
+
+            <button class="btn btn-primary" onclick="register()">Registrar</button>
+            
+            <div class="toggle-form">
+                <button onclick="toggleForm('login')">Já tem conta? Faça login</button>
+            </div>
+        </div>
+
+        <!-- Formulário de Login -->
+        <div id="loginForm" class="form-section">
+            <h2>🔐 Login</h2>
+            
+            <div class="form-group">
+                <label for="loginEmail">Email:</label>
+                <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="loginSenha">Senha:</label>
+                <input type="password" id="loginSenha" placeholder="Sua senha" required>
+            </div>
+
+            <button class="btn btn-primary" onclick="login()">Entrar</button>
+            
+            <div class="toggle-form">
+                <button onclick="toggleForm('register')">Não tem conta? Registre-se</button>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Processando...</p>
+        </div>
+
+        <!-- Resposta -->
+        <div id="response" class="response"></div>
+
+        <!-- Tokens (após login) -->
+        <div id="tokensSection" style="display: none;">
+            <h3>🔑 Tokens de Acesso</h3>
+            <div class="form-group">
+                <label>Access Token:</label>
+                <textarea id="accessToken" rows="3" readonly style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 12px;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Refresh Token:</label>
+                <textarea id="refreshToken" rows="3" readonly style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 12px;"></textarea>
+            </div>
+            <button class="btn btn-secondary" onclick="testMe()">Testar /api/auth/me</button>
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        let currentTokens = null;
+
+        function toggleForm(formType) {
+            document.getElementById('registerForm').classList.remove('active');
+            document.getElementById('loginForm').classList.remove('active');
+            document.getElementById(formType + 'Form').classList.add('active');
+            hideResponse();
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            hideResponse();
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showResponse(message, type = 'info') {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = message;
+            responseDiv.className = `response ${type}`;
+            responseDiv.style.display = 'block';
+        }
+
+        function hideResponse() {
+            document.getElementById('response').style.display = 'none';
+        }
+
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value.trim();
+        }
+
+        async function register() {
+            const apiUrl = getApiUrl();
+            
+            const data = {
+                nomeEmpresa: document.getElementById('regNomeEmpresa').value,
+                emailEmpresa: document.getElementById('regEmailEmpresa').value,
+                telefoneEmpresa: document.getElementById('regTelefoneEmpresa').value,
+                nomeUsuario: document.getElementById('regNomeUsuario').value,
+                emailUsuario: document.getElementById('regEmailUsuario').value,
+                senha: document.getElementById('regSenha').value
+            };
+
+            // Validação básica
+            if (!data.nomeEmpresa || !data.emailEmpresa || !data.telefoneEmpresa || 
+                !data.nomeUsuario || !data.emailUsuario || !data.senha) {
+                showResponse('Por favor, preencha todos os campos.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Registro realizado com sucesso!\n\nEmpresa: ${result.data.empresa.nome}\nUsuário: ${result.data.usuario.nome}\n\nVerifique seu email para confirmação.`, 'success');
+                    
+                    // Limpar formulário
+                    document.getElementById('registerForm').reset();
+                } else {
+                    showResponse(`❌ Erro no registro: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function login() {
+            const apiUrl = getApiUrl();
+            
+            const data = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginSenha').value
+            };
+
+            if (!data.email || !data.password) {
+                showResponse('Por favor, preencha email e senha.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentTokens = result.data;
+                    showResponse('✅ Login realizado com sucesso!', 'success');
+                    
+                    // Mostrar tokens
+                    document.getElementById('accessToken').value = currentTokens.accessToken;
+                    document.getElementById('refreshToken').value = currentTokens.refreshToken;
+                    document.getElementById('tokensSection').style.display = 'block';
+                    
+                    // Limpar formulário
+                    document.getElementById('loginForm').reset();
+                } else {
+                    showResponse(`❌ Erro no login: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function testMe() {
+            if (!currentTokens) {
+                showResponse('❌ Faça login primeiro para testar esta função.', 'error');
+                return;
+            }
+
+            const apiUrl = getApiUrl();
+            showLoading();
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentTokens.accessToken}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Dados do usuário:\n\nNome: ${result.data.nome}\nEmail: ${result.data.email}\nPapel: ${result.data.papel}\nStatus: ${result.data.status}`, 'success');
+                } else {
+                    showResponse(`❌ Erro ao obter dados: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function logout() {
+            if (!currentTokens) {
+                showResponse('❌ Faça login primeiro para fazer logout.', 'error');
+                return;
+            }
+
+            const apiUrl = getApiUrl();
+            showLoading();
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentTokens.accessToken}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse('✅ Logout realizado com sucesso!', 'success');
+                    
+                    // Limpar tokens
+                    currentTokens = null;
+                    document.getElementById('accessToken').value = '';
+                    document.getElementById('refreshToken').value = '';
+                    document.getElementById('tokensSection').style.display = 'none';
+                } else {
+                    showResponse(`❌ Erro no logout: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Teste de conectividade
+        async function testConnection() {
+            const apiUrl = getApiUrl();
+            showLoading();
+
+            try {
+                const response = await fetch(`${apiUrl}/health`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Backend conectado!\n\nStatus: ${result.status}\nMongoDB: ${result.database}\nUptime: ${Math.round(result.uptime)}s`, 'success');
+                } else {
+                    showResponse(`❌ Backend respondeu com erro: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Não foi possível conectar ao backend: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Teste automático de conectividade ao carregar a página
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 1000);
+        });
+    </script>
+</body>
+</html> 

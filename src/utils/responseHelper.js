@@ -4,7 +4,7 @@ class ResponseHelper {
       success: true,
       message,
       data,
-      timestamp: new Date().toISOString,
+      timestamp: new Date().toISOString(),
       statusCode,
     };
 
@@ -33,6 +33,19 @@ class ResponseHelper {
     }
 
     return res.status(statusCode).json(response);
+  }
+
+  static created(res, data = null, message = 'Recurso criado com sucesso') {
+    return this.success(res, data, message, 201);
+  }
+
+  static serverError(res, error, message = 'Erro interno do servidor') {
+    const errorDetails = {
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    };
+
+    return this.error(res, message, 500, errorDetails);
   }
 
   static paginated(

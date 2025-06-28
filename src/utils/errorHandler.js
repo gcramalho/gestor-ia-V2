@@ -2,10 +2,14 @@ const { createClient } = require('@supabase/supabase-js');
 const logger = require('./logger');
 const ResponseHelper = require('./responseHelper');
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY    
-);
+// Só inicializa o Supabase se as variáveis estiverem definidas
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+    supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY    
+    );
+}
 
 class ErrorHandler {
     static async logErrorToDatabase(error, req) {
