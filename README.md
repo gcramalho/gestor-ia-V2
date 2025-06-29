@@ -1,40 +1,53 @@
-# ======== Sistema de Gestão de Agentes de IA ===========
+# 🤖 Sistema de Gestão de Agentes de IA
 
 Plataforma completa para criar, configurar e gerenciar agentes de IA integrados com WhatsApp e outras plataformas de comunicação.
 
-## Índice
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-5+-blue.svg)](https://www.mongodb.com/)
+[![Express](https://img.shields.io/badge/Express-5.1+-black.svg)](https://expressjs.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com/)
+
+## 📋 Índice
 
 - [Visão Geral](#visão-geral)
+- [Funcionalidades](#funcionalidades)
 - [Arquitetura](#arquitetura)
 - [Tecnologias](#tecnologias)
 - [Instalação](#instalação)
 - [Configuração](#configuração)
-- [Testes de Autenticação](#testes-de-autenticação)
-- [Estrutura do Projeto](#estrutura-do-projeto)
+- [Uso](#uso)
 - [APIs](#apis)
-- [Autenticação](#autenticação)
-- [Multi-tenancy](#multi-tenancy)
 - [Deploy](#deploy)
 - [Desenvolvimento](#desenvolvimento)
 - [Troubleshooting](#troubleshooting)
 
-## Visão Geral
+## 🎯 Visão Geral
 
 Este sistema permite que empresas criem e gerenciem agentes de IA personalizados com:
 
 - **Gestão de Agentes**: Criação e configuração de agentes com prompts, arquivos de contexto e configurações
 - **Arquitetura Multi-tenant**: Gestão completa de empresas, usuários e controle de acesso por roles
-- **Gestão de Usuários**: Sistema completo de autenticação com Supabase Auth e controle granular de permissões
-- **Histórico**: Acompanhamento de conversas, métricas de uso e performance dos agentes
+- **Sistema de Autenticação**: JWT com refresh tokens e controle granular de permissões
+- **Histórico de Conversas**: Acompanhamento completo com WebSocket em tempo real
 - **API REST**: Integração completa com autenticação via API Keys para sistemas externos
+- **WhatsApp Integration**: Preparado para integração com WhatsApp Business API
 
-##  =========== Arquitetura ===========
+## ARQUITETURA 
 
 ### Padrão MVC
 ```
 src/
 ├── controllers/     # Lógica de negócio
+│   ├── admin/      # Controllers para admin_master
+│   ├── empresa/    # Controllers para empresas
+│   ├── authController.js
+│   └── apiController.js
 ├── models/         # Modelos de dados (Mongoose)
+│   ├── Usuario.js
+│   ├── Empresa.js
+│   ├── Agente.js
+│   ├── Conversa.js
+│   └── ArquivoAgente.js
 ├── routes/         # Definição de rotas
 ├── middlewares/    # Autenticação e autorização
 ├── utils/          # Utilitários (logger, helpers)
@@ -42,7 +55,7 @@ src/
 ```
 
 ### Fluxo de Autenticação
-1. **Login**: Supabase Auth → JWT Token → Middleware de autenticação
+1. **Login**: JWT Token → Middleware de autenticação
 2. **API Externa**: API Key → Validação → Acesso ao agente
 3. **Autorização**: Role-based access control (RBAC)
 
@@ -51,15 +64,94 @@ src/
 - Usuários vinculados a empresas específicas
 - Admin Master pode acessar todas as empresas
 
-## =========== Tecnologias ===========
+
+#### Roles e Permissões
+- **`admin_master`**: Acesso total ao sistema
+  - Pode gerenciar todas as empresas
+  - Pode criar/editar/deletar usuários
+  - Pode acessar todos os agentes
+  - Pode ver estatísticas globais
+
+- **`admin_empresa`**: Administrador da empresa
+  - Pode gerenciar usuários da empresa
+  - Pode criar/editar/deletar agentes
+  - Pode ver dashboard da empresa
+  - Pode configurar empresa
+
+- **`user_empresa`**: Usuário comum
+  - Pode visualizar agentes
+  - Pode ver conversas
+  - Pode usar chat
+  - Acesso limitado a dados da empresa
+
+
+### TIPOS DE AUTENTICAÇÃO
+#### 1. JWT (Usuários Internos)
+```javascript
+// Header para todas as requisições autenticadas
+Authorization: Bearer <access_token>
+
+// Exemplo de resposta do login
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "_id": "507f1f77bcf86cd799439011",
+      "nome": "João Silva",
+      "email": "joao@empresa.com",
+      "papel": "admin_empresa",
+      "empresa_id": "507f1f77bcf86cd799439012"
+    }
+  }
+}
+```
+
+#### 2. API Key (Integrações Externas)
+```javascript
+// Header para APIs externas
+x-api-key: <api_key_do_agente>
+
+// Exemplo de uso
+fetch('/api/chat', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'abc123def456...'
+  },
+  body: JSON.stringify({
+    mensagem: 'Olá, preciso de ajuda',
+    clienteTelefone: '+5511999999999'
+  })
+})
+```
+
+### Refresh Token
+```javascript
+// Renovar access token
+POST /api/auth/refresh
+{
+  "token": "<refresh_token>"
+}
+
+// Resposta
+{
+  "success": true,
+  "data": {
+    "accessToken": "novo_access_token",
+    "refreshToken": "novo_refresh_token"
+  }
+}
+
+## 🛠️ Tecnologias
 
 ### Backend
 - **Node.js** (v18+)
 - **Express.js** - Framework web
 - **MongoDB** - Banco de dados principal
 - **Mongoose** - ODM para MongoDB
-- **Supabase** - Autenticação e autorização
-- **JWT** - Tokens de acesso
+- **JWT** - Autenticação e autorização
 - **Socket.io** - Comunicação em tempo real
 - **Winston** - Logging estruturado
 
@@ -69,21 +161,23 @@ src/
 - **Rate Limiting** - Proteção contra ataques
 - **bcrypt** - Criptografia de senhas
 
-### Documentação
+### Documentação e Monitoramento
 - **Swagger/OpenAPI** - Documentação da API
+- **Prometheus** - Monitoramento
+- **Docker** - Containerização
 
-## ================= Instalação =====================
+## 🚀 Instalação
 
 ### Pré-requisitos
 - Node.js v18 ou superior
 - MongoDB v5 ou superior
-- Conta no Supabase
+- Docker (opcional, para deploy)
 
 ### Passos:
 
 1. **Clone o repositório**
 ```bash
-git clone <url-do-repositorio>
+git clone https://github.com/gcramalho/gestor-ia-V2.git
 cd projetoGestorIA
 ```
 
@@ -95,34 +189,29 @@ npm install
 3. **Configure as variáveis de ambiente**
 ```bash
 cp env.example .env
-# Edite o arquivo .env com as configurações certas
+# Edite o arquivo .env com as configurações
 ```
 
 4. **Gere as chaves JWT**
 ```bash
-node generate-secrets.js
+npm run generate-secrets
 # Copie as chaves geradas para o .env
 ```
 
 5. **Inicie o servidor**
 ```bash
 npm start
-# ou
-node server.js
+# ou para desenvolvimento
+npm run dev
 ```
 
-##  ===================== Configuração =====================
+## ⚙️ Configuração
 
-### VARIAVEIS DE AMBIENTE (.env) | ADAPTAR AO CONTEXTO
+### Variáveis de Ambiente (.env)
 
 ```env
 # ===== BANCO DE DADOS =====
-MONGODB_URI=mongodb://<usuario>:<senha>@mongo:27017/
-
-# ===== SUPABASE =====
-SUPABASE_URL=https://<seu-projeto>.supabase.co
-SUPABASE_ANON_KEY=<sua-chave-anonima>
-SUPABASE_SERVICE_KEY=<sua-chave-service>
+MONGODB_URI=mongodb://localhost:27017/gestor_ia
 
 # ===== JWT =====
 JWT_SECRET=<seu-jwt-secret>
@@ -138,480 +227,222 @@ CLIENT_URL=http://localhost:3000
 OPENAI_API_KEY=<sua-chave-openai>
 # WhatsApp Business API (futuro)
 WHATSAPP_API_KEY=<sua-chave-whatsapp>
-
 ```
 
-### ===================== Configuração do Supabase =====================
+### Roles do Sistema
+- **`admin_master`**: Acesso total ao sistema
+- **`admin_empresa`**: Gerencia sua empresa
+- **`user_empresa`**: Usuário comum da empresa
 
-1. Crie um projeto no [Supabase](https://supabase.com)
-2. Configure as tabelas necessárias:
-   - `system_logs` (para logs)
-   - `user_actions` (para auditoria)
+## 📖 Uso
 
-3. Configure as políticas de segurança (RLS)
-
-## ===================== Testes de Autenticação =====================
-
-Para testar e diagnosticar problemas com a autenticação, especialmente o erro "Erro no Supabase: fetch failed", use os arquivos de teste incluídos:
-
-### 🧪 Arquivos de Teste Disponíveis
-
-1. **`test-auth.html`** - Interface web completa para testar registro e login
-2. **`test-supabase.html`** - Interface específica para diagnóstico do Supabase
-3. **`test-supabase.js`** - Script Node.js para testar configuração do Supabase
-4. **`TESTE_AUTENTICACAO.md`** - Guia detalhado de testes
-
-### 🚀 Como Testar
-
-#### 1. Teste via Interface Web (Recomendado)
+### 1. Registro de Empresa
 ```bash
-# Abra no navegador
-open test-auth.html
-# ou
-open test-supabase.html
-```
-
-#### 2. Teste via Script Node.js
-```bash
-# Execute o script de teste
-node test-supabase.js
-```
-
-### 🔧 Diagnóstico de Problemas
-
-#### Erro "Erro no Supabase: fetch failed"
-
-**Causas Possíveis:**
-1. Variáveis de ambiente não configuradas
-2. URL do Supabase incorreta
-3. Chaves do Supabase incorretas
-4. Projeto Supabase inativo
-5. Problema de conectividade de rede
-
-**Soluções:**
-1. Execute `node test-supabase.js` para verificar configuração
-2. Verifique se o projeto Supabase está ativo
-3. Confirme se as chaves estão corretas
-4. Teste a conectividade de rede
-
-### 📋 Passos para Teste Completo
-
-1. **Verificar Backend**
-   - Certifique-se de que está rodando: `npm start`
-   - Teste conectividade via `test-auth.html`
-
-2. **Testar Registro**
-   - Use dados de teste no formulário
-   - Verifique se retorna sucesso
-
-3. **Testar Login**
-   - Use credenciais válidas
-   - Verifique se gera tokens
-
-4. **Testar Endpoints Protegidos**
-   - Use o token para acessar `/api/auth/me`
-
-Para mais detalhes, consulte o arquivo `TESTE_AUTENTICACAO.md`.
-
-## ===================== ESTRUTURA DO PROJETO =====================
-
-```
-projetoGestorIA/
-├── src/
-│   ├── config/
-│   │   └── database.js          # Conexão MongoDB
-│   ├── controllers/
-│   │   ├── admin/               # Controladores para admin_master
-│   │   │   ├── agenteAdminController.js
-│   │   │   ├── empresaAdminController.js
-│   │   │   └── usuarioAdminController.js
-│   │   ├── empresa/             # Controladores para empresas
-│   │   │   ├── agenteEmpresaController.js
-│   │   │   ├── dashboardController.js
-│   │   │   ├── empresaConfigController.js
-│   │   │   └── usuarioEmpresaController.js
-│   │   ├── authController.js    # Autenticação
-│   │   └── apiController.js     # API externa
-│   ├── middlewares/
-│   │   └── auth.js              # Autenticação e autorização
-│   ├── models/
-│   │   ├── Agente.js            # Modelo do agente
-│   │   ├── ArquivoAgente.js     # Arquivos do agente
-│   │   ├── Conversa.js          # Histórico de conversas
-│   │   ├── Empresa.js           # Modelo da empresa
-│   │   └── Usuario.js           # Modelo do usuário
-│   ├── routes/
-│   │   ├── admin.js             # Rotas administrativas
-│   │   ├── auth.js              # Rotas de autenticação
-│   │   ├── empresa.js           # Rotas da empresa
-│   │   └── api.js               # API externa
-│   └── utils/
-│       ├── errorHandler.js      # Tratamento de erros
-│       ├── helpers.js           # Funções auxiliares
-│       ├── logger.js            # Sistema de logs
-│       ├── responseHelper.js    # Padronização de respostas
-│       └── swagger.js           # Documentação da API
-├── logs/                        # Arquivos de log
-├── app.js                       # Configuração Express
-├── server.js                    # Ponto de entrada
-├── test-auth.html              # Interface de teste de autenticação
-├── test-supabase.html          # Interface de diagnóstico do Supabase
-├── test-supabase.js            # Script de teste do Supabase
-├── generate-secrets.js         # Gerador de chaves JWT
-├── env.example                 # Exemplo de variáveis de ambiente
-├── TESTE_AUTENTICACAO.md       # Guia de testes
-└── package.json
-```
-
-## APIs
-
-### Base URL
-```
-http://localhost:5000/api
-```
-
-### Autenticação
-
-#### Login
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "senha123"
-}
-```
-
-#### Registro
-```http
 POST /api/auth/register
-Content-Type: application/json
-
 {
-  "nomeEmpresa": "Minha Empresa",
-  "emailEmpresa": "empresa@example.com",
-  "telefoneEmpresa": "(11) 99999-9999",
-  "nomeUsuario": "João Silva",
-  "emailUsuario": "joao@empresa.com",
+  "nome": "Minha Empresa",
+  "cnpj": "12.345.678/0001-90",
+  "telefone": "(11) 99999-9999",
+  "email": "admin@empresa.com",
   "senha": "senha123"
 }
 ```
 
-### Empresas (Admin Master)
-
-#### Listar Empresas
-```http
-GET /api/empresas
-Authorization: Bearer <jwt-token>
-```
-
-#### Criar Empresa
-```http
-POST /api/empresas
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
-
+### 2. Login
+```bash
+POST /api/auth/login
 {
-  "nome": "Nova Empresa",
-  "email": "empresa@example.com",
-  "telefone": "(11) 99999-9999",
-  "limite_agentes": 50
+  "email": "admin@empresa.com",
+  "senha": "senha123"
 }
 ```
 
-### Agentes (Empresa)
-
-#### Listar Agentes
-```http
-GET /api/empresa/agentes
-Authorization: Bearer <jwt-token>
-```
-
-#### Criar Agente
-```http
+### 3. Criar Agente
+```bash
 POST /api/empresa/agentes
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
-
 {
   "nome": "Agente de Vendas",
   "descricao": "Agente especializado em vendas",
-  "prompt_base": "Você é um assistente de vendas...",
-  "configuracoes": {
-    "modelo": "gpt-4",
-    "temperatura": 0.7,
-    "max_tokens": 1000
-  }
+  "prompt": "Você é um agente de vendas...",
+  "modelo": "gpt-3.5-turbo",
+  "temperatura": 0.7
 }
 ```
 
-### API Externa
-
-#### Enviar Mensagem
-```http
-POST /api/v1/conversations
-x-api-key: <api-key-do-agente>
-Content-Type: application/json
-
+### 4. Chat com Agente
+```bash
+POST /api/chat
 {
-  "prompt": "Olá, preciso de ajuda",
-  "userIdentifier": "+5511999999999",
-  "userName": "João Silva"
+  "agenteId": "agente_id",
+  "mensagem": "Olá, preciso de ajuda",
+  "clienteTelefone": "11999999999"
 }
 ```
 
-### ===================== Documentação =====================
-Acesse: `http://localhost:5000/api-docs` (desenvolvimento)
+## 🔌 APIs
 
-## AUTENTICAÇÃO
+### Endpoints Principais
 
-### Tipos de Autenticação
-
-   **JWT (Usuários)**
-   - Header: `Authorization: Bearer <token>`
-   - Usado para acesso ao painel administrativo
-
-   **API Key (Agentes)**
-   - Header: `x-api-key: <api-key>`
-   - Usado para integrações externas
-
-- **Usuários internos**: JWT + Supabase Auth
-- **APIs externas**: API Keys por agente
-- **Roles**: admin_master, admin_empresa, user_empresa
-
-### Papéis (Roles)
-
-- **admin_master**: Acesso total ao sistema
-- **admin_empresa**: Administrador da empresa
-- **user_empresa**: Usuário comum da empresa
-
-### Fluxo de Autenticação
-
-    A[Login] --> B[Supabase Auth]
-    B --> C[Gerar JWT]
-    C --> D[Middleware Auth]
-    D --> E[Verificar Role]
-    E --> F[Acesso Permitido]
-
-## Multi-tenancy
-
-### Isolamento de Dados
-
-Cada empresa tem seus dados completamente isolados:
-
-```javascript
-// Buscar agentes da empresa do usuário
-const agentes = await Agente.find({ 
-  empresa_id: req.user.empresa_id 
-});
+#### Autenticação
+```
+POST   /api/auth/register          # Registrar empresa
+POST   /api/auth/login             # Login
+POST   /api/auth/refresh           # Refresh token
+GET    /api/auth/me                # Dados do usuário
+POST   /api/auth/logout            # Logout
+POST   /api/auth/alterar-senha     # Alterar senha
 ```
 
-### APIs Principais
-- `/api/auth/*` - Autenticação
-- `/api/empresa/*` - Gestão da empresa
-- `/api/admin/*` - Administração (admin_master)
-- `/api/v1/conversations` - API externa
-
-### Lógica
-
+#### Admin Master
 ```
-Empresa
-├── Usuários
-│   ├── admin_empresa
-│   └── user_empresa
-├── Agentes
-│   ├── Configurações
-│   ├── Arquivos
-│   └── Conversas
-└── Configurações
+GET    /api/admin/empresas         # Listar empresas
+POST   /api/admin/empresas         # Criar empresa
+GET    /api/admin/usuarios         # Listar usuários
+GET    /api/admin/agentes          # Listar agentes
 ```
 
-## ===================== Deploy =====================
-
-### Docker
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-
-EXPOSE 5000
-
-CMD ["node", "server.js"]
+#### Empresa
+```
+GET    /api/empresa/agentes        # Agentes da empresa
+POST   /api/empresa/agentes        # Criar agente
+PUT    /api/empresa/agentes/:id    # Atualizar agente
+DELETE /api/empresa/agentes/:id    # Deletar agente
+GET    /api/empresa/dashboard      # Dashboard
+GET    /api/empresa/config         # Configurações
 ```
 
-### Docker Compose
-
-```yaml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "27017:27017"
-    environment:
-      - NODE_ENV=production
-      - MONGODB_URI=mongodb://mongoadmin:secreto@localhost:27017/
-      - MONGO_INITDB_ROOT_USERNAME=mongoadmin
-      - MONGO_INITDB_ROOT_PASSWORD=secreto
-    depends_on:
-      - mongo
-
-  mongo:
-    image: mongo:5
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
-volumes:
-  mongo_data:
+#### API Externa
+```
+POST   /api/chat                   # Chat com agente
+GET    /api/conversas/:id          # Histórico de conversa
+GET    /api/health                 # Health check
 ```
 
-### ===================== Variáveis de Produção =====================
+### Documentação Swagger
+Acesse `/api-docs` para documentação interativa da API.
 
-```env
-NODE_ENV=production
-MONGODB_URI=mongodb://<usuario>:<senha>@mongo:27017/
-SUPABASE_URL=https://<seu-projeto>.supabase.co
-SUPABASE_ANON_KEY=<sua-chave-anonima>
-SUPABASE_SERVICE_KEY=<sua-chave-service>
-JWT_SECRET=<seu-jwt-secret>
-JWT_REFRESH_SECRET=<seu-refresh-secret>
-CLIENT_URL=https://<seu-frontend>.com
+## 🐳 Deploy
+
+### Docker Compose (Recomendado)
+
+1. **Clone e configure**
+```bash
+git clone <repositorio>
+cd projetoGestorIA
+cp env.example .env
 ```
 
-## ===================== Desenvolvimento =====================
+2. **Configure as variáveis**
+```bash
+npm run generate-secrets
+# Edite .env com suas configurações
+```
 
-### Scripts
+3. **Deploy**
+```bash
+docker-compose up -d
+```
+
+### Deploy Manual
+
+1. **Configure o servidor**
+```bash
+# Instale Node.js e MongoDB
+sudo apt update
+sudo apt install nodejs npm mongodb
+
+# Clone o projeto
+git clone <repositorio>
+cd projetoGestorIA
+npm install
+```
+
+2. **Configure PM2**
+```bash
+npm install -g pm2
+pm2 start server.js --name "gestor-ia"
+pm2 startup
+pm2 save
+```
+
+## 🧪 Testes
+
+### Frontend de Teste
+O projeto inclui um frontend de teste completo:
 
 ```bash
+# Abra no navegador
+open frontend-test.html
+```
+```
+
+## 🔧 Desenvolvimento
+
+### Scripts Disponíveis
+```bash
 npm start          # Inicia o servidor
-npm run dev        # Inicia em modo desenvolvimento
-npm run test       # Executa testes (futuro)
-npm run lint       # Verifica código (futuro)
+npm run dev        # Modo desenvolvimento com nodemon
+npm run lint       # Linting do código
+npm run format     # Formatação com Prettier
+npm run test       # Executa testes
+npm run migrate    # Migração de dados ()
 ```
 
-###  ===================== Estrutura dos Logs =====================
-
+### Estrutura de Desenvolvimento
 ```
-logs/
-├── application-2025-06-22.log    # Logs da aplicação
-├── exceptions.log                # Exceções não tratadas
-└── rejections.log                # Promises rejeitadas
-```
-
-### ===================== WebSocket =====================
-
-O sistema suporta comunicação em tempo real via Socket.io:
-
-```javascript
-// Conectar ao WebSocket
-const socket = io('http://localhost:5000');
-
-// Entrar em uma conversa
-socket.emit('join_conversation', 'conversation-id');
-
-// Receber mensagens em tempo real
-socket.on('message', (data) => {
-  console.log('Nova mensagem:', data);
-});
+src/
+├── controllers/   # Lógica de negócio
+├── models/        # Modelos MongoDB
+├── routes/        # Definição de rotas
+├── middlewares/   # Middlewares
+├── utils/         # Utilitários
+└── config/        # Configurações
 ```
 
-### ===================== Troubleshooting =====================
+## 🐛 Troubleshooting
 
-### Tratamento Problemas Comuns
+### Problemas Comuns
 
 #### 1. Erro de Conexão MongoDB
-```
-Error: connectDB is not a function
-```
-**Solução**: Verificar se o MongoDB está rodando e a URI está correta.
+```bash
+# Verifique se o MongoDB está rodando
+sudo systemctl status mongodb
 
-#### 2. Erro de Autenticação Supabase
+# Verifique a URI no .env
+MONGODB_URI=mongodb://localhost:27017/gestor_ia
 ```
-Error: Token inválido ou expirado
+
+#### 2. Erro de Autenticação JWT
+```bash
+# Regenerate JWT secrets
+npm run generate-secrets
+
+# Verifique as variáveis no .env
+JWT_SECRET=<seu-jwt-secret>
+JWT_REFRESH_SECRET=<seu-refresh-secret>
 ```
-**Solução**: Verificar as chaves do Supabase no .env.
 
 #### 3. Erro de CORS
-```
-Error: CORS policy
-```
-**Solução**: Verificar se CLIENT_URL está configurado corretamente.
-
-#### 4. Erro de Rate Limiting
-```
-Error: Muitas requisições
-```
-**Solução**: Aguardar 15 minutos ou ajustar limites no código.
-
-### Logs de Debug
-
-- Logs em `logs/` directory
-- Swagger UI em `/api-docs`
-- Health check em `/api/health`
-- Métricas em Prometheus/Grafana
-
-- Verificar logs da aplicação
-- Verificar conectividade com MongoDB
-- Verificar configurações do Supabase
-- Verificar variáveis de ambiente
-
-Para debug detalhado, configure:
-
-```env
-NODE_ENV=development
-LOG_LEVEL=debug
+```bash
+# Verifique CLIENT_URL no .env
+CLIENT_URL=http://localhost:3000
 ```
 
-### Health Check
-
-```http
-GET /api/health
+#### 4. Rate Limiting
+```bash
+# Aumente o limite se necessário
+# Em app.js, linha ~40
+max: 100, // Aumente este valor
 ```
 
-Resposta esperada:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-06-22T16:00:00.000Z",
-  "uptime": 3600,
-  "database": "connected"
-}
-```
+### Logs
+Os logs são salvos em `logs/` com rotação diária:
+- `logs/error.log` - Erros
+- `logs/combined.log` - Todos os logs
+- `logs/access.log` - Acessos HTTP
 
-## ===================== EM ABERTO =====================
+## 📄 Licença
 
-### Infraestrutura
-- [ ] Configurar ambiente de produção
-- [ ] Configurar monitoramento (Prometheus/Grafana)
-- [ ] Configurar backup automático do MongoDB
-- [ ] Configurar CDN para arquivos
-- [ ] Configurar SSL/TLS
-
-### Front-end
-- [ ] Implementar tela de login/registro
-- [ ] Implementar dashboard administrativo
-- [ ] Implementar gestão de agentes
-- [ ] Implementar histórico de conversas
-- [ ] Implementar configurações de empresa
-
-### Back-end Melhorias
-- [ ] Implementar upload de arquivos
-- [ ] Implementar notificações push
-- [ ] Implementar testes automatizados
-- [ ] Implementar serviço real de IA
-- [ ] Implementar métricas avançadas
+Este projeto está sob a licença ISC.
 
 ---
-
-**Versão**: 1.0.0  
-**Última atualização**: Junho 2025  
-**Mantido por**: Equipe de Desenvolvimento 

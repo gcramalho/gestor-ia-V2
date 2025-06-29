@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
 const usuarioSchema = new mongoose.Schema({
     empresa_id: {
@@ -28,10 +29,11 @@ const usuarioSchema = new mongoose.Schema({
         }
     },
 
-    supabase_user_id: {
+    senha: {
         type: String,
-        required: [true, 'ID do usuário Supabase é obrigatório'],
-        unique: true
+        required: [true, 'Senha é obrigatória'],
+        minlength: [6, 'Senha deve ter pelo menos 6 caracteres'],
+        select: false // Não retorna a senha nas consultas
     },
 
     papel: {
@@ -66,26 +68,50 @@ const usuarioSchema = new mongoose.Schema({
   timestamps: { createdAt: 'criado_em', updatedAt: 'atualizado_em' }
 });
 
-
 // Indexes pra melhor performance
 usuarioSchema.index({ empresa_id: 1 });
-// O índice para 'email' é criado automaticamente por 'unique: true'
-// usuarioSchema.index({ email: 1 });
-// O índice para 'supabase_user_id' é criado automaticamente por 'unique: true'
-// usuarioSchema.index({ supabase_user_id: 1 });
+usuarioSchema.index({ email: 1 });
 usuarioSchema.index({ papel: 1 });
-
 
 // Middleware p/ validar se admin_master não precisa de empresa_id
 usuarioSchema.pre('save', function(next) {
-
     if (this.papel === 'admin_master'){
         this.empresa_id = undefined;
-
-    } else if (!this.empresa_id) { // Se !admin_master e empresa_id vazio
+    } else if (!this.empresa_id) {
         return next(new Error('Empresa é obrigatória para usuários não admin_master'))
     }
     next();
 });
+
+// Middleware para hash da senha antes de salvar
+usuarioSchema.pre('save', async function(next) {
+    // Só hash a senha se ela foi modificada (ou é nova)
+    if (!this.isModified('senha')) return next();
+    
+    try {
+        // Hash da senha com salt de 12 rounds
+        this.senha = await bcrypt.hash(this.senha, 12);
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Método para comparar senhas
+usuarioSchema.methods.compararSenha = async function(senhaCandidata) {
+    return await bcrypt.compare(senhaCandidata, this.senha);
+};
+
+// Método para verificar se a senha foi alterada após o token ser emitido
+usuarioSchema.methods.senhaAlteradaApos = function(JWTTimestamp) {
+    if (this.atualizado_em) {
+        const alteradoTimestamp = parseInt(
+            this.atualizado_em.getTime() / 1000,
+            10
+        );
+        return JWTTimestamp < alteradoTimestamp;
+    }
+    return false;
+};
 
 module.exports = mongoose.model('Usuario', usuarioSchema);

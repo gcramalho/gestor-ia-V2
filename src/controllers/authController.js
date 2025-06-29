@@ -1,7 +1,6 @@
-const { createClient } = require('@supabase/supabase-js');
 const Usuario = require('../models/Usuario');
 const Empresa = require('../models/Empresa');
-const response = require('../utils/responseHelper');
+const ResponseHelper = require('../utils/responseHelper');
 const jwt = require('jsonwebtoken');
 
 // Função auxiliar para gerar tokens
@@ -22,24 +21,13 @@ const generateTokens = (userId, userRole, empresaId) => {
 // Registrar um novo usuário e empresa
 exports.register = async (req, res) => {
     const { nomeEmpresa, emailEmpresa, telefoneEmpresa, nomeUsuario, emailUsuario, senha } = req.body;
-    const supabase = req.app.get('supabase');
-    let supabase_user_id = null; // Declarar fora do try
 
     try {
-        // Criar o usuário no Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: emailUsuario,
-            password: senha,
-        });
-
-        if (authError) {
-            return response.badRequest(res, `Erro no Supabase: ${authError.message}`);
+        // Verificar se o email já existe
+        const usuarioExistente = await Usuario.findOne({ email: emailUsuario });
+        if (usuarioExistente) {
+            return ResponseHelper.badRequest(res, 'Email já está em uso.');
         }
-        if (!authData.user) {
-            return response.badRequest(res, 'Não foi possível criar o usuário no Supabase.');
-        }
-
-        supabase_user_id = authData.user.id; // Atribuir valor
 
         // Criar a empresa no MongoDB
         const novaEmpresa = new Empresa({
@@ -54,90 +42,100 @@ exports.register = async (req, res) => {
             empresa_id: novaEmpresa._id,
             nome: nomeUsuario,
             email: emailUsuario,
-            supabase_user_id: supabase_user_id,
+            senha: senha, // Será hasheada automaticamente pelo middleware
             papel: 'admin_empresa', // O primeiro usuário é o admin da empresa
         });
         await novoUsuario.save();
 
-        response.created(res, { 
-            message: 'Empresa e usuário registrados com sucesso! Verifique seu e-mail para confirmação.',
+        ResponseHelper.created(res, { 
+            message: 'Empresa e usuário registrados com sucesso!',
             empresa: novaEmpresa,
-            usuario: novoUsuario 
+            usuario: {
+                id: novoUsuario._id,
+                nome: novoUsuario.nome,
+                email: novoUsuario.email,
+                papel: novoUsuario.papel
+            }
         });
 
     } catch (error) {
-        // Se algo der errado
-        if (supabase_user_id) {
-            try {
-                await supabase.auth.admin.deleteUser(supabase_user_id);
-            } catch (deleteError) {
-                console.error('Erro ao deletar usuário do Supabase:', deleteError);
-            }
-        }
-        response.serverError(res, error);
+        ResponseHelper.serverError(res, error);
     }
 };
 
 // Fazer login
 exports.login = async (req, res) => {
     const { email, password } = req.body;
-    const supabase = req.app.get('supabase');
 
     try {
-        // Autenticar no Supabase
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
-        if (authError) {
-            return response.unauthorized(res, `Credenciais inválidas: ${authError.message}`);
-        }
-
-        // Encontrar o usuário no MongoDB
-        const usuario = await Usuario.findOne({ email: authData.user.email });
+        // Encontrar o usuário no MongoDB (incluindo a senha)
+        const usuario = await Usuario.findOne({ email }).select('+senha');
         if (!usuario || usuario.status === 'inativo') {
-            return response.unauthorized(res, 'Usuário não encontrado ou inativo.');
+            return ResponseHelper.unauthorized(res, 'Credenciais inválidas ou usuário inativo.');
         }
 
-        //  Gerar Tokens
+        // Verificar se a senha está correta
+        const senhaCorreta = await usuario.compararSenha(password);
+        if (!senhaCorreta) {
+            return ResponseHelper.unauthorized(res, 'Credenciais inválidas.');
+        }
+
+        // Verificar se a empresa do usuário está ativa (a menos que seja admin_master)
+        if (usuario.papel !== 'admin_master' && usuario.empresa_id) {
+            const empresa = await Empresa.findById(usuario.empresa_id);
+            if (empresa && empresa.status !== 'ativo') {
+                return ResponseHelper.forbidden(res, 'A empresa deste usuário está inativa.');
+            }
+        }
+
+        // Gerar Tokens
         const { accessToken, refreshToken } = generateTokens(usuario._id, usuario.papel, usuario.empresa_id);
         
         // Atualizar último acesso
         usuario.ultimo_acesso = new Date();
         await usuario.save();
 
-        response.success(res, { accessToken, refreshToken });
+        ResponseHelper.success(res, { 
+            accessToken, 
+            refreshToken,
+            user: {
+                id: usuario._id,
+                nome: usuario.nome,
+                email: usuario.email,
+                papel: usuario.papel,
+                empresa_id: usuario.empresa_id
+            }
+        });
 
     } catch (error) {
-        response.serverError(res, error);
+        ResponseHelper.serverError(res, error);
     }
 };
 
 // Obter dados do usuário logado
 exports.getMe = async (req, res) => {
     try {
-        const usuario = await Usuario.findById(req.user.id).select('-__v');
+        const usuario = await Usuario.findById(req.user.id)
+            .select('-__v')
+            .populate('empresa_id', 'nome email telefone status');
+            
         if (!usuario) {
-            return response.notFound(res, 'Usuário não encontrado.');
+            return ResponseHelper.notFound(res, 'Usuário não encontrado.');
         }
-        response.success(res, usuario);
+        ResponseHelper.success(res, usuario);
     } catch (error) {
-        response.serverError(res, error);
+        ResponseHelper.serverError(res, error);
     }
 };
 
 // Fazer logout
 exports.logout = async (req, res) => {
-    const supabase = req.app.get('supabase');
     try {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            return response.badRequest(res, `Erro no logout do Supabase: ${error.message}`);
-        }
-        response.success(res, { message: 'Logout realizado com sucesso.' });
+        // Em uma implementação mais robusta, você poderia invalidar o refresh token
+        // Por enquanto, apenas retornamos sucesso
+        ResponseHelper.success(res, { message: 'Logout realizado com sucesso.' });
     } catch (error) {
-        response.serverError(res, error);
+        ResponseHelper.serverError(res, error);
     }
 };
 
@@ -145,14 +143,41 @@ exports.logout = async (req, res) => {
 exports.refreshToken = (req, res) => {
     const { token } = req.body;
     if (!token) {
-        return response.badRequest(res, 'Refresh token é obrigatório.');
+        return ResponseHelper.badRequest(res, 'Refresh token é obrigatório.');
     }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
         const { accessToken, refreshToken } = generateTokens(decoded.id, decoded.papel, decoded.empresa_id);
-        response.success(res, { accessToken, refreshToken });
+        ResponseHelper.success(res, { accessToken, refreshToken });
     } catch (error) {
-        return response.unauthorized(res, 'Refresh token inválido ou expirado.');
+        return ResponseHelper.unauthorized(res, 'Refresh token inválido ou expirado.');
+    }
+};
+
+// Alterar senha
+exports.alterarSenha = async (req, res) => {
+    const { senhaAtual, novaSenha } = req.body;
+
+    try {
+        // Buscar usuário com senha
+        const usuario = await Usuario.findById(req.user.id).select('+senha');
+        if (!usuario) {
+            return ResponseHelper.notFound(res, 'Usuário não encontrado.');
+        }
+
+        // Verificar senha atual
+        const senhaCorreta = await usuario.compararSenha(senhaAtual);
+        if (!senhaCorreta) {
+            return ResponseHelper.badRequest(res, 'Senha atual incorreta.');
+        }
+
+        // Atualizar senha
+        usuario.senha = novaSenha; // Será hasheada automaticamente
+        await usuario.save();
+
+        ResponseHelper.success(res, { message: 'Senha alterada com sucesso.' });
+    } catch (error) {
+        ResponseHelper.serverError(res, error);
     }
 }; 

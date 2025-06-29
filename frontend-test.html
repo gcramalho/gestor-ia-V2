@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Autenticação MongoDB - GestorIA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .toggle-form {
+            text-align: center;
+        }
+
+        .toggle-form button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+        }
+
+        .toggle-form button:hover {
+            color: #764ba2;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .response {
+            display: none;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .response.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .response.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .response.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .tokens-section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .tokens-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .tokens-section textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 12px;
+            font-family: monospace;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+
+        .user-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .user-info h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .user-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .api-config {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .api-config input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Teste Autenticação MongoDB</h1>
+            <p>Teste a nova autenticação sem Supabase</p>
+            <div id="apiStatus" style="margin-top: 10px; padding: 5px 10px; border-radius: 3px; font-size: 12px; display: none;">
+                <span id="statusText"></span>
+            </div>
+        </div>
+
+        <!-- Configuração da API -->
+        <div class="api-config">
+            <label for="apiUrl">URL da API:</label>
+            <input type="text" id="apiUrl" value="http://localhost:5000/api" placeholder="http://localhost:5000/api">
+        </div>
+
+        <!-- Formulário de Registro -->
+        <div id="registerForm" class="form-section active">
+            <h2>📝 Registrar Nova Empresa</h2>
+            
+            <div class="form-group">
+                <label for="regNomeEmpresa">Nome da Empresa:</label>
+                <input type="text" id="regNomeEmpresa" placeholder="Minha Empresa LTDA" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regEmailEmpresa">Email da Empresa:</label>
+                <input type="email" id="regEmailEmpresa" placeholder="contato@minhaempresa.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regTelefoneEmpresa">Telefone da Empresa:</label>
+                <input type="text" id="regTelefoneEmpresa" placeholder="(11) 99999-9999" required 
+                       pattern="\(\d{2}\)\s\d{4,5}-\d{4}" 
+                       title="Formato: (XX) XXXXX-XXXX">
+                <small style="color: #666; font-size: 12px;">Formato: (XX) XXXXX-XXXX</small>
+            </div>
+
+            <div class="form-group">
+                <label for="regNomeUsuario">Nome do Usuário:</label>
+                <input type="text" id="regNomeUsuario" placeholder="João Silva" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regEmailUsuario">Email do Usuário:</label>
+                <input type="email" id="regEmailUsuario" placeholder="joao@minhaempresa.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regSenha">Senha:</label>
+                <input type="password" id="regSenha" placeholder="Sua senha (mín. 6 caracteres)" required minlength="6">
+            </div>
+
+            <button class="btn btn-primary" onclick="register()">Registrar Empresa</button>
+            
+            <div class="toggle-form">
+                <button onclick="toggleForm('login')">Já tem conta? Faça login</button>
+            </div>
+        </div>
+
+        <!-- Formulário de Login -->
+        <div id="loginForm" class="form-section">
+            <h2>🔐 Login</h2>
+            
+            <div class="form-group">
+                <label for="loginEmail">Email:</label>
+                <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="loginSenha">Senha:</label>
+                <input type="password" id="loginSenha" placeholder="Sua senha" required>
+            </div>
+
+            <button class="btn btn-primary" onclick="login()">Entrar</button>
+            
+            <div class="toggle-form">
+                <button onclick="toggleForm('register')">Não tem conta? Registre-se</button>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Processando...</p>
+        </div>
+
+        <!-- Resposta -->
+        <div id="response" class="response"></div>
+
+        <!-- Informações do Usuário -->
+        <div id="userInfo" class="user-info" style="display: none;">
+            <h4>👤 Informações do Usuário</h4>
+            <div id="userDetails"></div>
+        </div>
+
+        <!-- Tokens (após login) -->
+        <div id="tokensSection" class="tokens-section">
+            <h3>🔑 Tokens de Acesso</h3>
+            <div class="form-group">
+                <label>Access Token:</label>
+                <textarea id="accessToken" rows="3" readonly></textarea>
+            </div>
+            <div class="form-group">
+                <label>Refresh Token:</label>
+                <textarea id="refreshToken" rows="3" readonly></textarea>
+            </div>
+            <button class="btn btn-secondary" onclick="testMe()">Testar /api/auth/me</button>
+            <button class="btn btn-secondary" onclick="testRefresh()">Testar Refresh Token</button>
+            <button class="btn btn-secondary" onclick="testAlterarSenha()">Testar Alterar Senha</button>
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Seção de Alterar Senha -->
+        <div id="alterarSenhaSection" class="form-section" style="display: none;">
+            <h3>🔐 Alterar Senha</h3>
+            <div class="form-group">
+                <label for="senhaAtual">Senha Atual:</label>
+                <input type="password" id="senhaAtual" placeholder="Sua senha atual" required>
+            </div>
+            <div class="form-group">
+                <label for="novaSenha">Nova Senha:</label>
+                <input type="password" id="novaSenha" placeholder="Nova senha (mín. 6 caracteres)" required minlength="6">
+            </div>
+            <button class="btn btn-primary" onclick="alterarSenha()">Alterar Senha</button>
+            <button class="btn btn-secondary" onclick="cancelarAlterarSenha()">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        let currentTokens = null;
+        let currentUser = null;
+
+        function toggleForm(formType) {
+            document.getElementById('registerForm').classList.remove('active');
+            document.getElementById('loginForm').classList.remove('active');
+            document.getElementById(formType + 'Form').classList.add('active');
+            hideResponse();
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            hideResponse();
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showResponse(message, type = 'info') {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = message;
+            responseDiv.className = `response ${type}`;
+            responseDiv.style.display = 'block';
+        }
+
+        function hideResponse() {
+            document.getElementById('response').style.display = 'none';
+        }
+
+        function clearFormFields(formId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+            
+            const inputs = form.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    input.checked = false;
+                } else {
+                    input.value = '';
+                }
+            });
+        }
+
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value.trim();
+        }
+
+        function showUserInfo(user) {
+            const userInfo = document.getElementById('userInfo');
+            const userDetails = document.getElementById('userDetails');
+            
+            userDetails.innerHTML = `
+                <p><strong>ID:</strong> ${user.id}</p>
+                <p><strong>Nome:</strong> ${user.nome}</p>
+                <p><strong>Email:</strong> ${user.email}</p>
+                <p><strong>Papel:</strong> ${user.papel}</p>
+                <p><strong>Empresa ID:</strong> ${user.empresa_id || 'N/A'}</p>
+            `;
+            
+            userInfo.style.display = 'block';
+        }
+
+        function showTokens(accessToken, refreshToken) {
+            document.getElementById('accessToken').value = accessToken;
+            document.getElementById('refreshToken').value = refreshToken;
+            document.getElementById('tokensSection').style.display = 'block';
+        }
+
+        async function register() {
+            const apiUrl = getApiUrl();
+            
+            const data = {
+                nomeEmpresa: document.getElementById('regNomeEmpresa').value,
+                emailEmpresa: document.getElementById('regEmailEmpresa').value,
+                telefoneEmpresa: document.getElementById('regTelefoneEmpresa').value,
+                nomeUsuario: document.getElementById('regNomeUsuario').value,
+                emailUsuario: document.getElementById('regEmailUsuario').value,
+                senha: document.getElementById('regSenha').value
+            };
+
+            // Validação básica
+            if (!data.nomeEmpresa || !data.emailEmpresa || !data.telefoneEmpresa || 
+                !data.nomeUsuario || !data.emailUsuario || !data.senha) {
+                showResponse('Por favor, preencha todos os campos.', 'error');
+                return;
+            }
+
+            if (data.senha.length < 6) {
+                showResponse('A senha deve ter pelo menos 6 caracteres.', 'error');
+                return;
+            }
+
+            // Validação de formato de telefone
+            const telefoneRegex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/;
+            if (!telefoneRegex.test(data.telefoneEmpresa)) {
+                showResponse('Formato de telefone inválido. Use o formato: (XX) XXXXX-XXXX', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Registro realizado com sucesso!\n\nEmpresa: ${result.data.empresa.nome}\nUsuário: ${result.data.usuario.nome}\n\nAgora você pode fazer login.`, 'success');
+                    
+                    // Limpar formulário
+                    clearFormFields('registerForm');
+                    
+                    // Mudar para login
+                    setTimeout(() => {
+                        toggleForm('login');
+                        document.getElementById('loginEmail').value = data.emailUsuario;
+                    }, 2000);
+                } else {
+                    showResponse(`❌ Erro no registro: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function login() {
+            const apiUrl = getApiUrl();
+            
+            const data = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginSenha').value
+            };
+
+            if (!data.email || !data.password) {
+                showResponse('Por favor, preencha email e senha.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentTokens = {
+                        accessToken: result.data.accessToken,
+                        refreshToken: result.data.refreshToken
+                    };
+                    currentUser = result.data.user;
+
+                    showResponse(`✅ Login realizado com sucesso!\n\nBem-vindo, ${result.data.user.nome}!`, 'success');
+                    
+                    // Mostrar informações do usuário
+                    showUserInfo(result.data.user);
+                    
+                    // Mostrar tokens
+                    showTokens(result.data.accessToken, result.data.refreshToken);
+                    
+                    // Limpar formulário
+                    clearFormFields('loginForm');
+                } else {
+                    showResponse(`❌ Erro no login: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function testMe() {
+            if (!currentTokens) {
+                showResponse('❌ Faça login primeiro.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${getApiUrl()}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentTokens.accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ /api/auth/me funcionando!\n\nUsuário: ${result.data.nome}\nEmail: ${result.data.email}\nPapel: ${result.data.papel}`, 'success');
+                } else {
+                    showResponse(`❌ Erro: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function testRefresh() {
+            if (!currentTokens) {
+                showResponse('❌ Faça login primeiro.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${getApiUrl()}/auth/refresh`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: currentTokens.refreshToken })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentTokens = {
+                        accessToken: result.data.accessToken,
+                        refreshToken: result.data.refreshToken
+                    };
+                    
+                    showTokens(result.data.accessToken, result.data.refreshToken);
+                    showResponse(`✅ Refresh token funcionando!\n\nNovos tokens gerados com sucesso.`, 'success');
+                } else {
+                    showResponse(`❌ Erro no refresh: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function testAlterarSenha() {
+            if (!currentTokens) {
+                showResponse('❌ Faça login primeiro.', 'error');
+                return;
+            }
+
+            // Mostrar seção de alterar senha
+            document.getElementById('alterarSenhaSection').style.display = 'block';
+            showResponse('📝 Preencha os campos para alterar sua senha', 'info');
+        }
+
+        async function alterarSenha() {
+            if (!currentTokens) {
+                showResponse('❌ Faça login primeiro.', 'error');
+                return;
+            }
+
+            const senhaAtual = document.getElementById('senhaAtual').value;
+            const novaSenha = document.getElementById('novaSenha').value;
+
+            if (!senhaAtual || !novaSenha) {
+                showResponse('Por favor, preencha todos os campos.', 'error');
+                return;
+            }
+
+            if (novaSenha.length < 6) {
+                showResponse('A nova senha deve ter pelo menos 6 caracteres.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${getApiUrl()}/auth/alterar-senha`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentTokens.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ senhaAtual, novaSenha })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Senha alterada com sucesso!`, 'success');
+                    
+                    // Limpar formulário
+                    document.getElementById('senhaAtual').value = '';
+                    document.getElementById('novaSenha').value = '';
+                    
+                    // Esconder seção de alterar senha
+                    document.getElementById('alterarSenhaSection').style.display = 'none';
+                } else {
+                    showResponse(`❌ Erro ao alterar senha: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function cancelarAlterarSenha() {
+            // Esconder seção de alterar senha
+            document.getElementById('alterarSenhaSection').style.display = 'none';
+            
+            // Limpar formulário
+            document.getElementById('senhaAtual').value = '';
+            document.getElementById('novaSenha').value = '';
+        }
+
+        async function logout() {
+            if (!currentTokens) {
+                showResponse('❌ Faça login primeiro.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${getApiUrl()}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentTokens.accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Logout realizado com sucesso!`, 'success');
+                    
+                    // Limpar dados
+                    currentTokens = null;
+                    currentUser = null;
+                    
+                    // Esconder seções
+                    document.getElementById('userInfo').style.display = 'none';
+                    document.getElementById('tokensSection').style.display = 'none';
+                    
+                    // Voltar para login
+                    setTimeout(() => {
+                        toggleForm('login');
+                    }, 1000);
+                } else {
+                    showResponse(`❌ Erro no logout: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Teste de conectividade ao carregar a página
+        window.addEventListener('load', async () => {
+            const apiUrl = getApiUrl();
+            showResponse(`🔗 Conectando à API: ${apiUrl}`, 'info');
+            
+            try {
+                const response = await fetch(`${apiUrl}/health`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ API conectada!\nStatus: ${result.status}\nDatabase: ${result.database}`, 'success');
+                    
+                    // Mostrar status da API
+                    const apiStatus = document.getElementById('apiStatus');
+                    const statusText = document.getElementById('statusText');
+                    apiStatus.style.display = 'block';
+                    apiStatus.style.background = '#d4edda';
+                    apiStatus.style.color = '#155724';
+                    apiStatus.style.border = '1px solid #c3e6cb';
+                    statusText.textContent = `✅ API Online - Database: ${result.database}`;
+                } else {
+                    showResponse(`⚠️ API respondeu com erro: ${result.message}`, 'error');
+                    
+                    // Mostrar status da API
+                    const apiStatus = document.getElementById('apiStatus');
+                    const statusText = document.getElementById('statusText');
+                    apiStatus.style.display = 'block';
+                    apiStatus.style.background = '#f8d7da';
+                    apiStatus.style.color = '#721c24';
+                    apiStatus.style.border = '1px solid #f5c6cb';
+                    statusText.textContent = `⚠️ API com problemas`;
+                }
+            } catch (error) {
+                showResponse(`❌ Não foi possível conectar à API: ${error.message}`, 'error');
+                
+                // Mostrar status da API
+                const apiStatus = document.getElementById('apiStatus');
+                const statusText = document.getElementById('statusText');
+                apiStatus.style.display = 'block';
+                apiStatus.style.background = '#f8d7da';
+                apiStatus.style.color = '#721c24';
+                apiStatus.style.border = '1px solid #f5c6cb';
+                statusText.textContent = `❌ API Offline`;
+            }
+        });
+    </script>
+</body>
+</html> 

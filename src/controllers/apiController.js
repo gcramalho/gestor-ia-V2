@@ -1,6 +1,6 @@
 const Agente = require('../models/Agente');
 const Conversa = require('../models/Conversa');
-const response = require('../utils/responseHelper');
+const ResponseHelper = require('../utils/responseHelper');
 // const iaService = require('../services/iaService'); // Serviço de IA (quando for implementado)
 
 // 'Mock' do serviço de IA, trocar para o serviço de IA real
@@ -28,11 +28,11 @@ exports.handleMessage = async (req, res) => {
         if (conversationId) {
             conversa = await Conversa.findById(conversationId);
             if (!conversa) {
-                return response.notFound(res, 'Conversa não encontrada.');
+                return ResponseHelper.notFound(res, 'Conversa não encontrada.');
             }
             // Verifica se a conversa pertence ao agente correto
             if (conversa.agente_id.toString() !== agente._id.toString()) {
-                return response.forbidden(res, 'Esta conversa não pertence ao agente autenticado.');
+                return ResponseHelper.forbidden(res, 'Esta conversa não pertence ao agente autenticado.');
             }
         } else {
             // Cria uma nova conversa
@@ -72,13 +72,13 @@ exports.handleMessage = async (req, res) => {
 
         await conversa.save();
 
-        response.success(res, { 
+        ResponseHelper.success(res, { 
             reply: iaResponse.content, 
             conversationId: conversa._id 
         });
 
     } catch (error) {
-        response.serverError(res, error);
+        ResponseHelper.serverError(res, error);
     }
 };
 
@@ -90,16 +90,16 @@ exports.getConversationById = async (req, res) => {
         const conversa = await Conversa.findById(id);
 
         if (!conversa) {
-            return response.notFound(res, 'Conversa não encontrada.');
+            return ResponseHelper.notFound(res, 'Conversa não encontrada.');
         }
 
         // Verifica se a conversa pertence ao agente correto
         if (conversa.agente_id.toString() !== agente._id.toString()) {
-            return response.forbidden(res, 'Acesso negado a esta conversa.');
+            return ResponseHelper.forbidden(res, 'Acesso negado a esta conversa.');
         }
 
-        response.success(res, conversa);
+        ResponseHelper.success(res, conversa);
     } catch (error) {
-        response.serverError(res, error);
+        ResponseHelper.serverError(res, error);
     }
 }; 

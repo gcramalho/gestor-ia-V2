@@ -9,8 +9,8 @@ class UsuarioEmpresaController {
   async listarUsuarios(req, res, next) {
     try {
       const usuarios = await Usuario.find({ empresa_id: req.user.empresa_id })
-        .select('-supabase_user_id')
-        .lean();
+        .select('-senha')
+        .populate('empresa_id', 'nome');
 
       return ResponseHelper.success(res, usuarios);
     } catch (error) {
@@ -66,7 +66,7 @@ class UsuarioEmpresaController {
 
   async atualizarPerfil(req, res, next) {
     try {
-      const usuarioId = req.user._id;
+      const usuarioId = req.user.id;
 
       const usuario = await Usuario.findOne({ _id: usuarioId, empresa_id: req.user.empresa_id });
 

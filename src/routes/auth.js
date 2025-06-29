@@ -13,20 +13,24 @@ router.post('/auth/register', authController.register);
 // @access  Public
 router.post('/auth/login', authController.login);
 
+// @route   POST api/auth/refresh
+// @desc    Renovar access token
+// @access  Public
+router.post('/auth/refresh', authController.refreshToken);
+
 // @route   GET api/auth/me
 // @desc    Obter dados do usuário logado
 // @access  Private
 router.get('/auth/me', authenticate, authController.getMe);
 
 // @route   POST api/auth/logout
-// @desc    Fazer logout do usuário
+// @desc    Fazer logout
 // @access  Private
 router.post('/auth/logout', authenticate, authController.logout);
 
-// @route   POST api/auth/refresh-token
-// @desc    Obter um novo token de acesso
-// @access  Public
-router.post('/auth/refresh-token', authController.refreshToken);
-
+// @route   POST api/auth/alterar-senha
+// @desc    Alterar senha do usuário
+// @access  Private
+router.post('/auth/alterar-senha', authenticate, authController.alterarSenha);
 
 module.exports = router; 

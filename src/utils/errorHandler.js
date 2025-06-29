@@ -1,22 +1,12 @@
-const { createClient } = require('@supabase/supabase-js');
 const logger = require('./logger');
 const ResponseHelper = require('./responseHelper');
 
-// Só inicializa o Supabase se as variáveis estiverem definidas
-let supabase = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
-    supabase = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_KEY    
-    );
-}
-
 class ErrorHandler {
     static async logErrorToDatabase(error, req) {
-        try{
-            const { data, error: dbError } = await supabase
-            .from('error_logs')
-            .insert({
+        try {
+            // Aqui você pode implementar o log de erros no MongoDB se necessário
+            // Por exemplo, criar uma coleção 'error_logs' no MongoDB
+            logger.error('Application Error', {
                 error_name: error.name,
                 error_message: error.message,
                 stack_trace: error.stack,
@@ -25,10 +15,9 @@ class ErrorHandler {
                 user_id: req?.user?.id,
                 user_agent: req?.headers['user-agent'],
                 ip_address: req?.ip,
-                environment: process.env.NODE_ENV
+                environment: process.env.NODE_ENV,
+                timestamp: new Date()
             });
-
-            if(dbError) throw dbError;
         } catch(loggingError) {
             logger.error(`Falha ao registrar erro no banco: ${loggingError.message}`);
         }

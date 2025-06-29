@@ -98,7 +98,7 @@ class EmpresaAdminController {
 
     async criarEmpresa(req, res, next){
         try{
-            const { nome, cnpj, email, telefone, limite_agente, observacoes } = req.body;
+            const { nome, cnpj, email, telefone, limite_agentes, observacoes } = req.body;
 
             const [emailExistente, cnpjExistente] = await Promise.all([
                 Empresa.findOne({ email }),
@@ -198,7 +198,7 @@ class EmpresaAdminController {
             await Empresa.findByIdAndDelete(id);
             logger.info(`Empresa deletada: ${id}`);
 
-            return ResponseHelper.success(res, null, 'Emppresa deletada com sucesso');
+            return ResponseHelper.success(res, null, 'Empresa deletada com sucesso');
         } catch(error) {
             logger.error(`Erro ao deletar empresa: ${error.message}`);
             return next(error);

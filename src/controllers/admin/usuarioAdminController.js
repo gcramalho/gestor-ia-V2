@@ -25,7 +25,7 @@ class UsuarioAdminController {
 
   async criarUsuario(req, res, next) {
     try {
-      const { nome, email, senha, papel, empresa_id, ativo } = req.body;
+      const { nome, email, senha, papel, empresa_id, status } = req.body;
 
       const empresa = await Empresa.findById(empresa_id);
       if (!empresa) throw new AppError('Empresa não encontrada', 404);
@@ -40,7 +40,7 @@ class UsuarioAdminController {
         email,
         papel,
         empresa_id,
-        ativo,
+        status,
         ...(senhaHash && { senha: senhaHash })
       });
 
@@ -60,9 +60,9 @@ class UsuarioAdminController {
   async atualizarUsuario(req, res, next) {
     try {
       const { id } = req.params;
-      const { nome, email, senha, papel, ativo } = req.body;
+      const { nome, email, senha, papel, status } = req.body;
 
-      const updates = { nome, email, papel, ativo };
+      const updates = { nome, email, papel, status };
 
       if (senha) {
         updates.senha = await bcrypt.hash(senha, 10);
