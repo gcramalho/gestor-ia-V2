@@ -86,19 +86,37 @@ usuarioSchema.pre('save', function(next) {
 // Middleware para hash da senha antes de salvar
 usuarioSchema.pre('save', async function(next) {
     // Só hash a senha se ela foi modificada (ou é nova)
-    if (!this.isModified('senha')) return next();
+    if (!this.isModified('senha')) {
+        console.log('Senha não foi modificada, pulando hash'); // Log para debug
+        return next();
+    }
     
     try {
+        console.log('Hashando senha...', { senhaLength: this.senha?.length }); // Log para debug
         // Hash da senha com salt de 12 rounds
         this.senha = await bcrypt.hash(this.senha, 12);
+        console.log('Senha hasheada com sucesso', { hashLength: this.senha?.length }); // Log para debug
         next();
     } catch (error) {
+        console.error('Erro ao hashear senha:', error); // Log para debug
         next(error);
     }
 });
 
 // Método para comparar senhas
 usuarioSchema.methods.compararSenha = async function(senhaCandidata) {
+    console.log('compararSenha chamado:', { 
+        temSenhaCandidata: !!senhaCandidata, 
+        senhaCandidataLength: senhaCandidata?.length,
+        temSenhaHash: !!this.senha,
+        senhaHashLength: this.senha?.length 
+    }); // Log para debug
+    
+    if (!senhaCandidata || !this.senha) {
+        console.log('Erro: senhaCandidata ou this.senha está undefined/null'); // Log para debug
+        return false;
+    }
+    
     return await bcrypt.compare(senhaCandidata, this.senha);
 };
 

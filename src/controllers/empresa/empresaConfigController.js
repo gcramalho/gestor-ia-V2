@@ -7,10 +7,11 @@ class EmpresaConfigController {
 
   async obterDados(req, res, next) {
     try {
-      const empresa = await Empresa.findById(req.user.empresa_id).lean();
+      const empresa = await Empresa.findById(req.user.empresa_id)
+        .select('-__v');
 
       if (!empresa) {
-        return ResponseHelper.notFound(res, 'Empresa');
+        return ResponseHelper.notFound(res, 'Empresa não encontrada.');
       }
 
       return ResponseHelper.success(res, empresa);
@@ -25,25 +26,19 @@ class EmpresaConfigController {
    */
   async atualizarDados(req, res, next) {
     try {
+      const { nome, email, telefone, endereco } = req.body;
+
       const empresa = await Empresa.findById(req.user.empresa_id);
 
       if (!empresa) {
-        return ResponseHelper.notFound(res, 'Empresa');
+        return ResponseHelper.notFound(res, 'Empresa não encontrada.');
       }
 
-      const camposPermitidos = [
-        'nome',
-        'telefone',
-        'limite_agentes',
-        'observacoes',
-        'status'
-      ];
-
-      camposPermitidos.forEach((campo) => {
-        if (req.body[campo] !== undefined) {
-          empresa[campo] = req.body[campo];
-        }
-      });
+      // Atualizar campos permitidos
+      if (nome !== undefined) empresa.nome = nome;
+      if (email !== undefined) empresa.email = email;
+      if (telefone !== undefined) empresa.telefone = telefone;
+      if (endereco !== undefined) empresa.endereco = endereco;
 
       await empresa.save();
       return ResponseHelper.success(res, empresa, 'Dados da empresa atualizados com sucesso');

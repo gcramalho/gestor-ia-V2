@@ -5,15 +5,23 @@ const ResponseHelper = require('../../utils/responseHelper');
 const logger = require('../../utils/logger');
 const { AppError } = require('../../utils/errorHandler');
 const { generateApiKey } = require('../../utils/helpers');
+const crypto = require('crypto');
 
 class AgenteEmpresaController {
   async listarAgentes(req, res, next) {
     try {
+      console.log('🔧 listarAgentes chamado:', {
+        userId: req.user?.id,
+        userPapel: req.user?.papel,
+        empresaId: req.user?.empresa_id
+      });
+
       const { page = 1, limit = 10, search = '', status = '' } = req.query;
       const skip = (page - 1) * limit;
 
       const filters = {
-        empresa_id: req.user.empresa_id
+        empresa_id: req.user.empresa_id,
+        status: { $ne: 'deletado' }
       };
 
       if (search) {
@@ -39,7 +47,21 @@ class AgenteEmpresaController {
 
       const totalPages = Math.ceil(total / limit);
 
-      return ResponseHelper.paginated(res, agentes, total, parseInt(page), totalPages, parseInt(limit));
+      console.log('✅ Agentes encontrados:', { count: agentes.length, total });
+
+      // Retornar resposta simples para teste
+      return res.status(200).json({
+        success: true,
+        data: agentes,
+        pagination: {
+          totalItems: total,
+          totalPages,
+          currentPage: parseInt(page),
+          pageSize: parseInt(limit),
+          hasNextPage: parseInt(page) < totalPages,
+          hasPreviousPage: parseInt(page) > 1,
+        }
+      });
     } catch (error) {
       logger.error(`Erro ao listar agentes: ${error.message}`);
       return next(new AppError('Erro ao listar agentes', 500));
@@ -48,18 +70,32 @@ class AgenteEmpresaController {
 
   async obterAgente(req, res, next) {
     try {
+      console.log('🔧 obterAgente chamado:', {
+        userId: req.user?.id,
+        userPapel: req.user?.papel,
+        empresaId: req.user?.empresa_id,
+        agenteId: req.params.id
+      });
+
       const { id } = req.params;
 
       const agente = await Agente.findOne({
         _id: id,
-        empresa_id: req.user.empresa_id
+        empresa_id: req.user.empresa_id,
+        status: { $ne: 'deletado' }
       }).select('-api_key').lean();
 
       if (!agente) throw new AppError('Agente não encontrado', 404);
 
       const arquivos = await ArquivoAgente.find({ agente_id: id }).lean();
 
-      return ResponseHelper.success(res, { ...agente, arquivos });
+      console.log('✅ Agente encontrado:', { agenteId: agente._id });
+
+      // Retornar resposta simples para teste
+      return res.status(200).json({
+        success: true,
+        data: { ...agente, arquivos }
+      });
     } catch (error) {
       logger.error(`Erro ao obter agente: ${error.message}`);
       return next(error);
@@ -68,28 +104,70 @@ class AgenteEmpresaController {
 
   async criarAgente(req, res, next) {
     try {
-      const { nome, descricao, prompt_base, configuracoes, telefone_whatsapp } = req.body;
+      console.log('🔧 criarAgente chamado:', {
+        userId: req.user?.id,
+        userPapel: req.user?.papel,
+        empresaId: req.user?.empresa_id,
+        body: req.body,
+        headers: req.headers
+      });
 
-      const totalAgentes = await Agente.countDocuments({ empresa_id: req.user.empresa_id });
+      const {
+        nome,
+        descricao,
+        prompt_base,
+        configuracoes,
+        status = true
+      } = req.body;
 
-      // Limite virá da req.user ou pode ser consultado via Empresa.findById
+      // Validações básicas
+      if (!nome || !descricao || !prompt_base) {
+        console.log('❌ Validação falhou:', { nome: !!nome, descricao: !!descricao, prompt_base: !!prompt_base });
+        return ResponseHelper.badRequest(res, 'Nome, descrição e prompt base são obrigatórios.');
+      }
+
+      console.log('✅ Validações passaram, criando agente...');
+      console.log('📋 Dados recebidos:', { nome, descricao, prompt_base, configuracoes, status });
+
+      // Gerar API Key única
+      const api_key = crypto.randomBytes(32).toString('hex');
 
       const novoAgente = new Agente({
         empresa_id: req.user.empresa_id,
         nome,
         descricao,
         prompt_base,
-        configuracoes,
-        telefone_whatsapp,
-        api_key: generateApiKey()
+        configuracoes: configuracoes || {
+          modelo: 'gpt-3.5-turbo',
+          temperatura: 0.7,
+          max_tokens: 1000,
+          top_p: 1
+        },
+        status,
+        api_key
+      });
+
+      console.log('📝 Agente a ser salvo:', {
+        empresa_id: novoAgente.empresa_id,
+        nome: novoAgente.nome,
+        status: novoAgente.status,
+        configuracoes: novoAgente.configuracoes
       });
 
       await novoAgente.save();
 
       const agenteResponse = await Agente.findById(novoAgente._id).select('-api_key').lean();
 
-      return ResponseHelper.success(res, agenteResponse, 'Agente criado com sucesso', 201);
+      console.log('✅ Agente criado com sucesso:', { agenteId: agenteResponse._id });
+
+      // Retornar resposta simples para teste
+      return res.status(201).json({
+        success: true,
+        message: 'Agente criado com sucesso',
+        data: agenteResponse
+      });
     } catch (error) {
+      console.error('❌ Erro ao criar agente:', error);
       logger.error(`Erro ao criar agente: ${error.message}`);
       return next(error);
     }
@@ -97,18 +175,51 @@ class AgenteEmpresaController {
 
   async atualizarAgente(req, res, next) {
     try {
-      const { id } = req.params;
-      const updates = req.body;
+      console.log('🔧 atualizarAgente chamado:', {
+        userId: req.user?.id,
+        userPapel: req.user?.papel,
+        empresaId: req.user?.empresa_id,
+        agenteId: req.params.id,
+        body: req.body
+      });
 
-      const agente = await Agente.findOneAndUpdate(
-        { _id: id, empresa_id: req.user.empresa_id },
-        updates,
-        { new: true, runValidators: true }
-      ).select('-api_key');
+      const {
+        nome,
+        descricao,
+        prompt_base,
+        configuracoes,
+        status
+      } = req.body;
 
-      if (!agente) throw new AppError('Agente não encontrado', 404);
+      const agente = await Agente.findOne({
+        _id: req.params.id,
+        empresa_id: req.user.empresa_id,
+        status: { $ne: 'deletado' }
+      });
 
-      return ResponseHelper.success(res, agente, 'Agente atualizado com sucesso');
+      if (!agente) {
+        return ResponseHelper.notFound(res, 'Agente não encontrado.');
+      }
+
+      // Atualizar campos
+      if (nome !== undefined) agente.nome = nome;
+      if (descricao !== undefined) agente.descricao = descricao;
+      if (prompt_base !== undefined) agente.prompt_base = prompt_base;
+      if (configuracoes !== undefined) agente.configuracoes = configuracoes;
+      if (status !== undefined) agente.status = status;
+
+      await agente.save();
+
+      const agenteResponse = await Agente.findById(agente._id).select('-api_key').lean();
+
+      console.log('✅ Agente atualizado com sucesso:', { agenteId: agenteResponse._id });
+
+      // Retornar resposta simples para teste
+      return res.status(200).json({
+        success: true,
+        message: 'Agente atualizado com sucesso',
+        data: agenteResponse
+      });
     } catch (error) {
       logger.error(`Erro ao atualizar agente: ${error.message}`);
       return next(error);
@@ -117,11 +228,28 @@ class AgenteEmpresaController {
 
   async deletarAgente(req, res, next) {
     try {
+      console.log('🔧 deletarAgente chamado:', {
+        userId: req.user?.id,
+        userPapel: req.user?.papel,
+        empresaId: req.user?.empresa_id,
+        agenteId: req.params.id
+      });
+
       const { id } = req.params;
 
-      const agente = await Agente.findOne({ _id: id, empresa_id: req.user.empresa_id });
+      const agente = await Agente.findOne({
+        _id: id,
+        empresa_id: req.user.empresa_id,
+        status: { $ne: 'deletado' }
+      });
 
-      if (!agente) throw new AppError('Agente não encontrado', 404);
+      if (!agente) {
+        return ResponseHelper.notFound(res, 'Agente não encontrado.');
+      }
+
+      // Soft delete
+      agente.status = 'deletado';
+      await agente.save();
 
       const conversasAtivas = await Conversa.countDocuments({ agente_id: id, status: 'ativa' });
 
@@ -132,7 +260,13 @@ class AgenteEmpresaController {
       await ArquivoAgente.deleteMany({ agente_id: id });
       await Agente.findByIdAndDelete(id);
 
-      return ResponseHelper.success(res, null, 'Agente deletado com sucesso');
+      console.log('✅ Agente deletado com sucesso:', { agenteId: id });
+
+      // Retornar resposta simples para teste
+      return res.status(200).json({
+        success: true,
+        message: 'Agente deletado com sucesso'
+      });
     } catch (error) {
       logger.error(`Erro ao deletar agente: ${error.message}`);
       return next(error);
@@ -141,23 +275,36 @@ class AgenteEmpresaController {
 
   async regenerarApiKey(req, res, next) {
     try {
+      console.log('🔧 regenerarApiKey chamado:', {
+        userId: req.user?.id,
+        userPapel: req.user?.papel,
+        empresaId: req.user?.empresa_id,
+        agenteId: req.params.id
+      });
+
       const { id } = req.params;
 
-      const novaApiKey = generateApiKey();
-      const agente = await Agente.findOneAndUpdate(
-        { _id: id, empresa_id: req.user.empresa_id },
-        { api_key: novaApiKey },
-        { new: true }
-      );
+      const agente = await Agente.findOne({
+        _id: id,
+        empresa_id: req.user.empresa_id,
+        status: { $ne: 'deletado' }
+      });
 
       if (!agente) {
-        throw new AppError('Agente não encontrado ou não pertence à sua empresa', 404);
+        return ResponseHelper.notFound(res, 'Agente não encontrado.');
       }
 
-      // Retorna a nova chave apenas nesta resposta por segurança
-      return ResponseHelper.success(res, {
-        message: 'API Key regenerada com sucesso. Esta é a única vez que a chave será exibida.',
-        api_key: novaApiKey
+      // Gerar nova API Key
+      agente.api_key = crypto.randomBytes(32).toString('hex');
+      await agente.save();
+
+      console.log('✅ API Key regenerada com sucesso:', { agenteId: agente._id });
+
+      // Retornar resposta simples para teste
+      return res.status(200).json({
+        success: true,
+        message: 'API Key regenerada com sucesso.',
+        data: { api_key: agente.api_key }
       });
     } catch (error) {
       logger.error(`Erro ao regenerar API Key: ${error.message}`);

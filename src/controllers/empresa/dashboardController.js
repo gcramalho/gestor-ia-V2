@@ -1,5 +1,6 @@
 const Agente = require('../../models/Agente');
 const Conversa = require('../../models/Conversa');
+const Usuario = require('../../models/Usuario');
 const ResponseHelper = require('../../utils/responseHelper');
 const logger = require('../../utils/logger');
 const { AppError } = require('../../utils/errorHandler');
@@ -7,29 +8,78 @@ const { AppError } = require('../../utils/errorHandler');
 class DashboardController {
   async obterResumo(req, res, next) {
     try {
-      const empresaId = req.user.empresa_id;
+      console.log('🔧 obterResumo chamado:', {
+        userId: req.user?.id,
+        userPapel: req.user?.papel,
+        empresaId: req.user?.empresa_id
+      });
 
-      const [totalAgentes, agentesAtivos, totalConversas, conversasHoje] = await Promise.all([
-        Agente.countDocuments({ empresa_id: empresaId }),
-        Agente.countDocuments({ empresa_id: empresaId, status: true }),
-        Conversa.countDocuments({ agente_id: { $in: await Agente.find({ empresa_id: empresaId }).distinct('_id') } }),
-        Conversa.countDocuments({
-          agente_id: { $in: await Agente.find({ empresa_id: empresaId }).distinct('_id') },
-          criado_em: {
-            $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-            $lte: new Date(new Date().setHours(23, 59, 59, 999))
-          }
-        })
-      ]);
+      const empresa_id = req.user.empresa_id;
+
+      // Contar agentes
+      const totalAgentes = await Agente.countDocuments({ 
+        empresa_id, 
+        status: { $ne: 'deletado' } 
+      });
+
+      const agentesAtivos = await Agente.countDocuments({ 
+        empresa_id, 
+        status: true 
+      });
+
+      // Contar conversas
+      const totalConversas = await Conversa.countDocuments({ 
+        agente_id: { $in: await Agente.find({ empresa_id }).select('_id') } 
+      });
+
+      const conversasAtivas = await Conversa.countDocuments({ 
+        agente_id: { $in: await Agente.find({ empresa_id }).select('_id') },
+        status: 'ativa'
+      });
+
+      // Contar usuários da empresa
+      const totalUsuarios = await Usuario.countDocuments({ 
+        empresa_id, 
+        status: 'ativo' 
+      });
+
+      // Agentes mais recentes
+      const agentesRecentes = await Agente.find({ 
+        empresa_id, 
+        status: { $ne: 'deletado' } 
+      })
+      .select('nome status criado_em')
+      .sort({ criado_em: -1 })
+      .limit(5);
+
+      // Conversas mais recentes
+      const conversasRecentes = await Conversa.find({ 
+        agente_id: { $in: await Agente.find({ empresa_id }).select('_id') } 
+      })
+      .populate('agente_id', 'nome')
+      .select('cliente_telefone status criado_em')
+      .sort({ criado_em: -1 })
+      .limit(5);
 
       const resumo = {
-        total_agentes: totalAgentes,
-        agentes_ativos: agentesAtivos,
-        total_conversas: totalConversas,
-        conversas_hoje: conversasHoje
+        estatisticas: {
+          totalAgentes,
+          agentesAtivos,
+          totalConversas,
+          conversasAtivas,
+          totalUsuarios
+        },
+        agentesRecentes,
+        conversasRecentes
       };
 
-      return ResponseHelper.success(res, resumo);
+      console.log('✅ Dashboard gerado:', { totalAgentes, agentesAtivos, totalConversas });
+
+      // Retornar resposta simples para teste
+      return res.status(200).json({
+        success: true,
+        data: resumo
+      });
     } catch (error) {
       logger.error(`Erro ao obter resumo do dashboard: ${error.message}`);
       return next(new AppError('Erro ao obter dados do dashboard', 500));

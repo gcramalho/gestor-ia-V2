@@ -38,11 +38,12 @@ const empresaSchema = new mongoose.Schema({
     telefone: {
         type: String,
         required: [true, 'Telefone da empresa é obrigatório'],
-        validate: { // Validação telefone
+        validate: { // Validação telefone mais flexível
             validator: function(v) {
-                return /^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(v);
+                // Aceita formatos: (XX) XXXXX-XXXX, (XX) XXXX-XXXX, XXXXXXXXXXX
+                return /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/.test(v);
             },
-            message: 'Telefone deve estar no formato (XX) XXXXX-XXXX'
+            message: 'Telefone deve estar em um formato válido'
         }
     },
 

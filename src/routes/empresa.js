@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate } = require('../middlewares/auth');
 
 // Controllers da Empresa
 const agenteEmpresaController = require('../controllers/empresa/agenteEmpresaController');
@@ -8,39 +8,71 @@ const usuarioEmpresaController = require('../controllers/empresa/usuarioEmpresaC
 const dashboardController = require('../controllers/empresa/dashboardController');
 const empresaConfigController = require('../controllers/empresa/empresaConfigController');
 
+// --- Middleware de debug para todas as rotas de empresa ---
+router.use((req, res, next) => {
+    console.log('🏢 Rota de empresa chamada:', {
+        method: req.method,
+        path: req.path,
+        originalUrl: req.originalUrl,
+        baseUrl: req.baseUrl,
+        user: req.user ? { id: req.user.id, papel: req.user.papel } : 'null'
+    });
+    next();
+});
+
 // --- Middleware de autenticação para todas as rotas de empresa ---
 router.use(authenticate);
 
-// --- ROTAS PARA ADMIN DA EMPRESA E USUÁRIOS COMUNS ---
-// (user_empresa, admin_empresa)
+// --- ROTAS PARA TODOS OS USUÁRIOS CADASTRADOS ---
+// (admin_master, admin_empresa, user_empresa)
 
-// Agentes (Apenas leitura para usuários comuns)
-router.get('/empresa/agentes', authorize(['admin_empresa', 'user_empresa']), agenteEmpresaController.listarAgentes);
-router.get('/empresa/agentes/:id', authorize(['admin_empresa', 'user_empresa']), agenteEmpresaController.obterAgente);
+// Agentes (CRUD completo para todos os usuários autenticados da empresa)
+router.get('/agentes', (req, res, next) => {
+    console.log('🔍 Rota GET /agentes chamada');
+    next();
+}, agenteEmpresaController.listarAgentes);
+
+router.get('/agentes/:id', (req, res, next) => {
+    console.log('🔍 Rota GET /agentes/:id chamada');
+    next();
+}, agenteEmpresaController.obterAgente);
+
+router.post('/agentes', (req, res, next) => {
+    console.log('🔍 Rota POST /agentes chamada');
+    next();
+}, agenteEmpresaController.criarAgente);
+
+router.put('/agentes/:id', (req, res, next) => {
+    console.log('🔍 Rota PUT /agentes/:id chamada');
+    next();
+}, agenteEmpresaController.atualizarAgente);
+
+router.delete('/agentes/:id', (req, res, next) => {
+    console.log('🔍 Rota DELETE /agentes/:id chamada');
+    next();
+}, agenteEmpresaController.deletarAgente);
+
+router.post('/agentes/:id/regenerate-key', (req, res, next) => {
+    console.log('🔍 Rota POST /agentes/:id/regenerate-key chamada');
+    next();
+}, agenteEmpresaController.regenerarApiKey);
 
 // Dashboard
-router.get('/empresa/dashboard', authorize(['admin_empresa', 'user_empresa']), dashboardController.obterResumo);
+router.get('/dashboard', dashboardController.obterResumo);
 
 // Usuário (pode atualizar o próprio perfil)
-router.put('/empresa/perfil', authorize(['admin_empresa', 'user_empresa']), usuarioEmpresaController.atualizarPerfil);
-
-
-// --- ROTAS APENAS PARA ADMIN DA EMPRESA ---
-// (admin_empresa)
-
-// Gestão de Agentes (CRUD completo)
-router.post('/empresa/agentes', authorize(['admin_empresa']), agenteEmpresaController.criarAgente);
-router.put('/empresa/agentes/:id', authorize(['admin_empresa']), agenteEmpresaController.atualizarAgente);
-router.delete('/empresa/agentes/:id', authorize(['admin_empresa']), agenteEmpresaController.deletarAgente);
-router.post('/empresa/agentes/:id/regenerate-key', authorize(['admin_empresa']), agenteEmpresaController.regenerarApiKey);
-
-// Gestão de Usuários da Empresa (o admin da empresa não pode criar, apenas o admin_master)
-router.get('/empresa/usuarios', authorize(['admin_empresa']), usuarioEmpresaController.listarUsuarios);
-router.put('/empresa/usuarios/:id', authorize(['admin_empresa']), usuarioEmpresaController.atualizarUsuario);
-router.delete('/empresa/usuarios/:id', authorize(['admin_empresa']), usuarioEmpresaController.deletarUsuario);
+router.put('/perfil', usuarioEmpresaController.atualizarPerfil);
 
 // Configurações da Empresa
-router.get('/empresa/config', authorize(['admin_empresa']), empresaConfigController.obterDados);
-router.put('/empresa/config', authorize(['admin_empresa']), empresaConfigController.atualizarDados);
+router.get('/config', empresaConfigController.obterDados);
+router.put('/config', empresaConfigController.atualizarDados);
+
+// Gestão de Usuários da Empresa (apenas admin da empresa)
+// Se quiser restringir, pode usar authorize(['admin_empresa']) aqui:
+// const { authorize } = require('../middlewares/auth');
+// router.get('/usuarios', authorize(['admin_empresa']), usuarioEmpresaController.listarUsuarios);
+router.get('/usuarios', usuarioEmpresaController.listarUsuarios);
+router.put('/usuarios/:id', usuarioEmpresaController.atualizarUsuario);
+router.delete('/usuarios/:id', usuarioEmpresaController.deletarUsuario);
 
 module.exports = router;

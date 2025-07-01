@@ -9,11 +9,11 @@ router.use(authenticateApiKey);
 // @route   POST /api/v1/conversations
 // @desc    Iniciar uma nova conversa ou enviar mensagem para uma conversa existente
 // @access  Private (API Key)
-router.post('/v1/conversations', apiController.handleMessage);
+router.post('/conversations', apiController.handleMessage);
 
 // @route   GET /api/v1/conversations/:id
 // @desc    Obter o histórico de uma conversa
 // @access  Private (API Key)
-router.get('/v1/conversations/:id', apiController.getConversationById);
+router.get('/conversations/:id', apiController.getConversationById);
 
 module.exports = router; 

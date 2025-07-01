@@ -62,16 +62,15 @@ app.get('/api/health', (req, res) => {
 });
 
 // Rotas
-const routes = [
-    require('./src/routes/auth'),
-    require('./src/routes/admin'),
-    require('./src/routes/empresa'),
-    require('./src/routes/api'),
-];
+const authRoutes = require('./src/routes/auth');
+const empresaRoutes = require('./src/routes/empresa');
+const adminRoutes = require('./src/routes/admin');
+const apiRoutes = require('./src/routes/api');
 
-routes.forEach(route => {
-    app.use('/api', route);
-});
+app.use('/api/auth', authRoutes);
+app.use('/api/empresa', empresaRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/v1', apiRoutes); // Mudado para /api/v1 para não interceptar outras rotas
 
 // Documentação Swagger
 if(process.env.NODE_ENV === 'development'){
