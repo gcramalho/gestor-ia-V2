@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { authenticateApiKey } = require('../middlewares/auth');
 const apiController = require('../controllers/apiController');
-
 // Middleware para autenticar todas as requisições com API Key
 router.use(authenticateApiKey);
 

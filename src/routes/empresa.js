@@ -7,6 +7,7 @@ const agenteEmpresaController = require('../controllers/empresa/agenteEmpresaCon
 const usuarioEmpresaController = require('../controllers/empresa/usuarioEmpresaController');
 const dashboardController = require('../controllers/empresa/dashboardController');
 const empresaConfigController = require('../controllers/empresa/empresaConfigController');
+const { getModelsForFrontend } = require('../config/models');
 
 // --- Middleware de debug para todas as rotas de empresa ---
 router.use((req, res, next) => {
@@ -74,5 +75,21 @@ router.put('/config', empresaConfigController.atualizarDados);
 router.get('/usuarios', usuarioEmpresaController.listarUsuarios);
 router.put('/usuarios/:id', usuarioEmpresaController.atualizarUsuario);
 router.delete('/usuarios/:id', usuarioEmpresaController.deletarUsuario);
+
+// Rota para obter modelos disponíveis
+router.get('/models', (req, res) => {
+  try {
+    const models = getModelsForFrontend();
+    res.json({
+      success: true,
+      data: models
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao obter modelos disponíveis'
+    });
+  }
+});
 
 module.exports = router;

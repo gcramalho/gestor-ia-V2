@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const { getModelValues } = require('../config/models');
 
 const agenteSchema = new mongoose.Schema({
     empresa_id: {
@@ -26,11 +27,16 @@ const agenteSchema = new mongoose.Schema({
         maxlength: [5000, 'Prompt base não pode exceder 5000 caracteres']
     },
 
+    instrucoes: {
+        type: String,
+        maxlength: [2000, 'Instruções não podem exceder 2000 caracteres']
+    },
+
     configuracoes: {
         modelo: {
             type: String,
             enum: {
-                values: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'claude-3-sonnet', 'claude-3-haiku'],
+                values: getModelValues(),
                 message: 'Modelo de IA não suportado'
             },
             default: 'gpt-3.5-turbo'
@@ -55,6 +61,25 @@ const agenteSchema = new mongoose.Schema({
             min: [1, 'Minimo 1 token'],
             max: [4000, 'Máximo 4000 tokens'],
             default: 1000
+        },
+
+        frequency_penalty: {
+            type: Number,
+            min: [0, 'Penalidade de frequência mínima é 0'],
+            max: [2, 'Penalidade de frequência máxima é 2'],
+            default: 0
+        },
+
+        presence_penalty: {
+            type: Number,
+            min: [0, 'Penalidade de presença mínima é 0'],
+            max: [2, 'Penalidade de presença máxima é 2'],
+            default: 0
+        },
+
+        stop_sequences: {
+            type: [String],
+            default: []
         },
 
         resposta_padrao: {

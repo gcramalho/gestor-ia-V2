@@ -20,9 +20,16 @@ class AgenteEmpresaController {
       const skip = (page - 1) * limit;
 
       const filters = {
-        empresa_id: req.user.empresa_id,
-        status: { $ne: 'deletado' }
+        empresa_id: req.user.empresa_id
       };
+
+      // Se status for especificado, usar o valor específico
+      if (status !== '') {
+        filters.status = status === 'true';
+      }
+      // Se não especificado, não filtrar por status (incluir todos os agentes da empresa)
+
+      console.log('🔍 Filtros aplicados:', filters);
 
       if (search) {
         filters.$or = [
@@ -48,6 +55,7 @@ class AgenteEmpresaController {
       const totalPages = Math.ceil(total / limit);
 
       console.log('✅ Agentes encontrados:', { count: agentes.length, total });
+      console.log('📋 Dados dos agentes:', agentes.map(a => ({ id: a._id, nome: a.nome, status: a.status })));
 
       // Retornar resposta simples para teste
       return res.status(200).json({
@@ -81,8 +89,7 @@ class AgenteEmpresaController {
 
       const agente = await Agente.findOne({
         _id: id,
-        empresa_id: req.user.empresa_id,
-        status: { $ne: 'deletado' }
+        empresa_id: req.user.empresa_id
       }).select('-api_key').lean();
 
       if (!agente) throw new AppError('Agente não encontrado', 404);
@@ -116,14 +123,15 @@ class AgenteEmpresaController {
         nome,
         descricao,
         prompt_base,
+        instrucoes,
         configuracoes,
         status = true
       } = req.body;
 
       // Validações básicas
-      if (!nome || !descricao || !prompt_base) {
-        console.log('❌ Validação falhou:', { nome: !!nome, descricao: !!descricao, prompt_base: !!prompt_base });
-        return ResponseHelper.badRequest(res, 'Nome, descrição e prompt base são obrigatórios.');
+      if (!nome || !prompt_base) {
+        console.log('❌ Validação falhou:', { nome: !!nome, prompt_base: !!prompt_base });
+        return ResponseHelper.badRequest(res, 'Nome e prompt base são obrigatórios.');
       }
 
       console.log('✅ Validações passaram, criando agente...');
@@ -137,11 +145,15 @@ class AgenteEmpresaController {
         nome,
         descricao,
         prompt_base,
+        instrucoes,
         configuracoes: configuracoes || {
           modelo: 'gpt-3.5-turbo',
           temperatura: 0.7,
           max_tokens: 1000,
-          top_p: 1
+          top_p: 0.9,
+          frequency_penalty: 0,
+          presence_penalty: 0,
+          stop_sequences: []
         },
         status,
         api_key
@@ -187,14 +199,14 @@ class AgenteEmpresaController {
         nome,
         descricao,
         prompt_base,
+        instrucoes,
         configuracoes,
         status
       } = req.body;
 
       const agente = await Agente.findOne({
         _id: req.params.id,
-        empresa_id: req.user.empresa_id,
-        status: { $ne: 'deletado' }
+        empresa_id: req.user.empresa_id
       });
 
       if (!agente) {
@@ -205,6 +217,7 @@ class AgenteEmpresaController {
       if (nome !== undefined) agente.nome = nome;
       if (descricao !== undefined) agente.descricao = descricao;
       if (prompt_base !== undefined) agente.prompt_base = prompt_base;
+      if (instrucoes !== undefined) agente.instrucoes = instrucoes;
       if (configuracoes !== undefined) agente.configuracoes = configuracoes;
       if (status !== undefined) agente.status = status;
 
@@ -239,16 +252,15 @@ class AgenteEmpresaController {
 
       const agente = await Agente.findOne({
         _id: id,
-        empresa_id: req.user.empresa_id,
-        status: { $ne: 'deletado' }
+        empresa_id: req.user.empresa_id
       });
 
       if (!agente) {
         return ResponseHelper.notFound(res, 'Agente não encontrado.');
       }
 
-      // Soft delete
-      agente.status = 'deletado';
+      // Soft delete - definir status como false (inativo)
+      agente.status = false;
       await agente.save();
 
       const conversasAtivas = await Conversa.countDocuments({ agente_id: id, status: 'ativa' });
@@ -286,8 +298,7 @@ class AgenteEmpresaController {
 
       const agente = await Agente.findOne({
         _id: id,
-        empresa_id: req.user.empresa_id,
-        status: { $ne: 'deletado' }
+        empresa_id: req.user.empresa_id
       });
 
       if (!agente) {
